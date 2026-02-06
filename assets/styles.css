@@ -1,0 +1,125 @@
+/* 2026 Sleek Dark UI for Six Nations Fantasy Explorer */
+
+:root {
+  --bg: #0b0f19;
+  --panel: #121826;
+  --panel-soft: #0f1629;
+  --text: #f8fafc; /* much brighter */
+  --muted: #cbd5e1; /* brighter muted */
+  --accent: #7dd3fc; /* sky-300 */
+  --accent-2: #c084fc; /* violet-400 */
+  --border: #334155; /* slightly brighter for contrast */
+}
+
+html, body, #_dash-app-content { background: var(--bg) !important; color: var(--text); }
+
+/* Global typography */
+body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }
+h1, h2, h3, h4, h5 { color: var(--text); letter-spacing: .2px; }
+p, label, .form-label, .navbar-brand { color: var(--text); }
+.form-label { opacity: 1 !important; }
+
+/* Layout spacing */
+.neo-container { padding-top: 24px; padding-bottom: 36px; }
+.g-3 { --bs-gutter-x: 1.25rem; --bs-gutter-y: 1.25rem; }
+.panel { margin-bottom: 1rem; }
+@media (min-width: 1200px) {
+  .neo-container { max-width: 1180px; }
+}
+
+.neo-navbar {
+  background: linear-gradient(90deg, #0f172a 0%, #111827 50%, #0f172a 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+
+.panel {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-soft) 100%);
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  padding: 18px 18px 14px 18px;
+}
+
+.card-title { color: var(--text); letter-spacing: .2px; }
+
+/* Controls */
+.panel .form-label { color: var(--text); font-weight: 700; text-transform: uppercase; font-size: .85rem; letter-spacing: .08rem; }
+.Select-control, .Select { background: #111827 !important; color: var(--text) !important; border-color: var(--border) !important; border-radius: 10px; }
+.dash-dropdown .Select, .dash-dropdown .Select-control, .dash-dropdown .Select-value, .dash-dropdown .Select-input > input { background: #111827 !important; color: var(--text) !important; }
+.dash-dropdown .Select-value-label, .dash-dropdown .Select-placeholder, .dash-dropdown .Select-value-icon, .dash-dropdown .Select-arrow, .dash-dropdown .Select-arrow-zone, .dash-dropdown .Select-clear-zone { color: var(--text) !important; }
+.dash-dropdown .Select-placeholder { opacity: 1 !important; }
+.dash-dropdown .Select--single > .Select-control .Select-value { color: var(--text) !important; }
+.Select.is-open > .Select-control, .Select-control:focus, .Select-control:hover { box-shadow: 0 0 0 2px rgba(125,211,252,.25); }
+.Select-menu-outer { background: #0e1525 !important; color: var(--text) !important; border-color: var(--border) !important; }
+/* Dash v2 uses react-select v1 styles: increase readable font and padding */
+.Select-placeholder, .Select--single > .Select-control .Select-value { color: var(--text) !important; opacity: 1 !important; }
+.Select-control span, .Select-control div { color: var(--text) !important; }
+.Select-arrow { border-top-color: var(--muted) !important; }
+.form-check { padding-top: 6px; }
+.form-check .form-check-label { opacity: 1 !important; }
+.Select-control { height: 44px; }
+.Select-control .Select-input { height: 42px; }
+.Select-input > input { color: var(--text) !important; }
+.Select-menu-outer { max-height: 280px; }
+/* Dropdown menu options */
+.Select-option { background: #0e1525 !important; color: var(--text) !important; }
+.Select-option.is-focused { background: #16213b !important; color: var(--text) !important; }
+.Select-option.is-selected { background: #1f2937 !important; color: var(--text) !important; }
+
+/* Multi-select chips */
+.Select--multi .Select-value { background: #192338 !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
+.Select--multi .Select-value-icon { color: #94a3b8 !important; border-right-color: var(--border) !important; }
+.Select--multi .Select-value-label { color: var(--text) !important; }
+
+/* Graph container */
+.neo-graph .main-svg { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+.neo-graph { padding: 8px; }
+.neo-graph .cartesianlayer .xtick text, .neo-graph .cartesianlayer .ytick text { fill: var(--text) !important; font-size: 13px; }
+.neo-graph .legendtext { fill: var(--text) !important; font-size: 12px; }
+
+/* DataTable */
+div.dash-spreadsheet-container .dash-spreadsheet-inner td, 
+div.dash-spreadsheet-container .dash-spreadsheet-inner th {
+  background-color: #0e1525 !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+div.dash-spreadsheet-container .dash-spreadsheet-inner th {
+  background-color: #111827 !important;
+}
+div.dash-spreadsheet-container .dash-spreadsheet-inner tr:nth-child(odd) td {
+  background-color: #0f1629 !important;
+}
+div.dash-spreadsheet-container .dash-spreadsheet-inner { font-size: 0.95rem; }
+div.dash-spreadsheet-container .dash-spreadsheet-container { padding: 8px; }
+div.dash-spreadsheet-container .dash-spreadsheet-inner tr:hover td { background-color: #152038 !important; }
+
+/* Subtle accent borders */
+.panel { position: relative; }
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px; /* border thickness */
+  background: linear-gradient(120deg, rgba(125,211,252,.25), rgba(192,132,252,.25));
+  -webkit-mask: 
+    linear-gradient(#000 0 0) content-box, 
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Navbar brand accent */
+.navbar-brand { color: var(--text) !important; }
+.navbar-brand .accent { color: var(--accent-2); }
+
+/* Improve radio/checkbox readability */
+.form-check-input { background-color: #0e1525; border-color: var(--border); box-shadow: none; }
+.form-check-input:checked { background-color: var(--accent-2); border-color: var(--accent-2); }
+.form-check-label { color: var(--text) !important; font-weight: 600; }
+
+/* Horizontal rule inside panels */
+.panel hr { border-color: var(--border); opacity: 1; margin: 14px 0; }
