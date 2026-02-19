@@ -21,7 +21,7 @@ Quick start
 - Log in to https://fantasy.sixnationsrugby.com/
 - Open DevTools → Network → pick any API call → Copy the `Authorization` header value
 
-3) Export the token before running the notebook
+3) Export the token before fetching data
 
 - macOS/Linux (zsh/bash):
 
@@ -38,16 +38,22 @@ Notes:
 
     export SIXNATIONS_X_ACCESS_KEY="<current-access-key>"
 
-4) Open and run the notebook
+4) Pull latest data (no notebook required)
 
-- In VS Code: open `ingest.ipynb`, select the `fantasy-2026` kernel, and Run All.
+- Using uv:
+
+    uv run python fantasy_ingest.py
+
+- Or with your active venv:
+
+    python fantasy_ingest.py
+
 Persist and explore with a dashboard
 ------------------------------------
 
-After running the notebook, a `data/` folder will contain a timestamped combined export of all available matches (1–15):
+After running the ingest script, a `data/` folder will contain a combined export of all available matches (1–15):
 
-- `data/all_matches_<UTC timestamp>.parquet`
-- `data/all_matches_<UTC timestamp>.csv`
+- `data/all_matches.duckdb` (table: `all_matches`)
 
 Run the dashboard:
 
@@ -62,13 +68,14 @@ Run the dashboard:
 Then open http://127.0.0.1:8050/ and use the filters to explore:
 
 - Breakdown by player with stacked bars (either % contribution or raw points)
-- Detailed table with per-stat points columns
+- Toggle `Points Category` between `Total Points` and `Consistent Points`
+- Minutes overlay on the same chart for quick workload context
 
 
 What you get
 ------------
 
-The notebook:
+The ingest module (`fantasy_ingest.py`):
 
 - Fetches the match JSON via the private API with a retrying session and the required `x-access-key` header
 - Iterates over match IDs 1–15, fetching and appending only those that have player data available
@@ -79,18 +86,26 @@ The notebook:
   - raw stats per player
   - a `{stat}_points` column for each scored stat
   - `points_total` from the site
+  - `total_points` (same as `points_total`)
+  - `consistent_points` (all points except tries, yellow/red cards, player of the match, and lineout steals)
   - `computed_points_total` and `points_delta` for verification
 
 Notes
 -----
 
-- If you see Unauthorized (401/403), ensure `SIXNATIONS_TOKEN` is set correctly. You can provide it with or without the leading `Token ` prefix; the notebook normalises it.
+- If you see Unauthorized (401/403), ensure `SIXNATIONS_TOKEN` is set correctly. You can provide it with or without the leading `Token ` prefix; the code normalises it.
 - The default `x-access-key` is pre-filled from live traffic (can change any time). If it ceases to work, set `SIXNATIONS_X_ACCESS_KEY` to the current value you observe in the browser.
 - Team names are inferred from the payload where available and fall back to generic labels.
 
 Development notes
 -----------------
 
-- Data files are written to a single combined file: `data/all_matches_<UTC timestamp>.parquet/csv`.
-- The dashboard reads the latest file from `data/` (prefers Parquet if present).
+- Data files are written to a single combined DuckDB database: `data/all_matches.duckdb` (updated in place each run).
+- The dashboard reads `data/all_matches.duckdb` if present, otherwise the latest DuckDB file from `data/`.
+- The ingest step upserts rows by `(match_id, id)` so older matches remain unless refreshed.
+- API pulls are throttled to at most once per 60 seconds by default (`SIXNATIONS_MIN_REFRESH_SECONDS`).
+- The dashboard can auto-refresh from the API on startup:
+  - `SIXNATIONS_REFRESH_ON_START=auto` (default): refresh only when `SIXNATIONS_TOKEN` is set
+  - `SIXNATIONS_REFRESH_ON_START=true`: always try
+  - `SIXNATIONS_REFRESH_ON_START=false`: never refresh
 - Bars in the dashboard are sorted from largest to smallest by total, not alphabetically. Use the filters to group by player, position, team, or opponent.
