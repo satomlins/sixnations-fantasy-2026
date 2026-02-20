@@ -17,6 +17,73 @@ CONSISTENT_POINTS_EXCLUDED_POINT_COLS = {
     f"{stat}_points" for stat in CONSISTENT_POINTS_EXCLUDED_STATS
 }
 DERIVED_POINT_COLUMNS = {"total_points", "consistent_points", "good_points"}
+STAT_LABEL_MAP = {
+    "Try": "Tries",
+    "Assists": "Assists",
+    "Conversion": "Conversions",
+    "Penalty": "Penalties",
+    "DropGoal": "Drop goals",
+    "DefendersBeaten": "Defenders beaten",
+    "MetresCarried": "Metres carried",
+    "FiftyTwentyTwo": "50-22s",
+    "KicksRecovered": "Kicks recovered",
+    "Offloads": "Offloads",
+    "AttackingScrumWin": "Attacking scrum wins",
+    "Tackles": "Tackles",
+    "BreakdownSteal": "Breakdown steals",
+    "LineoutSteal": "Lineout steals",
+    "PenaltyConceded": "Penalties conceded",
+    "PlayerOfTheMatch": "Player of the Match",
+    "YellowCard": "Yellow cards",
+    "RedCard": "Red cards",
+}
+STAT_LABEL_ORDER = [
+    STAT_LABEL_MAP["Try"],
+    STAT_LABEL_MAP["Assists"],
+    STAT_LABEL_MAP["Conversion"],
+    STAT_LABEL_MAP["Penalty"],
+    STAT_LABEL_MAP["DropGoal"],
+    STAT_LABEL_MAP["DefendersBeaten"],
+    STAT_LABEL_MAP["MetresCarried"],
+    STAT_LABEL_MAP["FiftyTwentyTwo"],
+    STAT_LABEL_MAP["KicksRecovered"],
+    STAT_LABEL_MAP["Offloads"],
+    STAT_LABEL_MAP["AttackingScrumWin"],
+    STAT_LABEL_MAP["Tackles"],
+    STAT_LABEL_MAP["BreakdownSteal"],
+    STAT_LABEL_MAP["LineoutSteal"],
+    STAT_LABEL_MAP["PenaltyConceded"],
+    STAT_LABEL_MAP["PlayerOfTheMatch"],
+    STAT_LABEL_MAP["YellowCard"],
+    STAT_LABEL_MAP["RedCard"],
+]
+STAT_COLOR_MAP = {
+    STAT_LABEL_MAP["Try"]: "#00A6FB",
+    STAT_LABEL_MAP["Assists"]: "#F94144",
+    STAT_LABEL_MAP["Conversion"]: "#F3722C",
+    STAT_LABEL_MAP["Penalty"]: "#F8961E",
+    STAT_LABEL_MAP["DropGoal"]: "#F9C74F",
+    STAT_LABEL_MAP["DefendersBeaten"]: "#90BE6D",
+    STAT_LABEL_MAP["MetresCarried"]: "#43AA8B",
+    STAT_LABEL_MAP["FiftyTwentyTwo"]: "#577590",
+    STAT_LABEL_MAP["KicksRecovered"]: "#277DA1",
+    STAT_LABEL_MAP["Offloads"]: "#B5179E",
+    STAT_LABEL_MAP["AttackingScrumWin"]: "#7209B7",
+    STAT_LABEL_MAP["Tackles"]: "#3A0CA3",
+    STAT_LABEL_MAP["BreakdownSteal"]: "#00BBF9",
+    STAT_LABEL_MAP["LineoutSteal"]: "#9B5DE5",
+    STAT_LABEL_MAP["PenaltyConceded"]: "#F15BB5",
+    STAT_LABEL_MAP["PlayerOfTheMatch"]: "#FF006E",
+    STAT_LABEL_MAP["YellowCard"]: "#FFD166",
+    STAT_LABEL_MAP["RedCard"]: "#D00000",
+}
+
+
+def _coerce_bool_series(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    normalized = series.astype(str).str.strip().str.lower()
+    return normalized.isin({"1", "true", "t", "yes", "y"})
 
 
 def _maybe_refresh_from_api() -> None:
@@ -213,6 +280,40 @@ def load_latest_df() -> pd.DataFrame:
         df["consistent_points"] = df[consistent_point_cols].sum(axis=1)
     else:
         df["consistent_points"] = 0.0
+
+    # Keep base position for filtering and store fixture-role variants separately.
+    base_position = (
+        df["position"].fillna("").astype(str).str.strip()
+        if "position" in df.columns
+        else pd.Series(["Unknown"] * len(df), index=df.index)
+    )
+    df["position"] = base_position
+    df["position_base"] = base_position
+
+    if "is_substitute" in df.columns:
+        sub_mask = _coerce_bool_series(df["is_substitute"])
+    elif "starter_status" in df.columns:
+        sub_mask = df["starter_status"].astype(str).str.strip().str.upper().eq("R")
+    elif "is_starter" in df.columns:
+        sub_mask = ~_coerce_bool_series(df["is_starter"])
+    else:
+        sub_mask = pd.Series([False] * len(df), index=df.index)
+    df["is_substitute"] = sub_mask
+
+    if "position_fixture" not in df.columns:
+        df["position_fixture"] = df["position_base"]
+    else:
+        fixture_pos = (
+            df["position_fixture"].fillna("").astype(str).str.strip()
+        )
+        df["position_fixture"] = fixture_pos.where(
+            fixture_pos != "",
+            df["position_base"],
+        )
+    df.loc[df["is_substitute"], "position_fixture"] = (
+        df.loc[df["is_substitute"], "position_base"] + " sub"
+    )
+
     # Minutes are non-scoring but useful for plotting on a secondary axis (0..80)
     if "Minutes" in df.columns:
         df["Minutes"] = (
@@ -396,7 +497,7 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=6,
+                            md=4,
                         ),
                         dbc.Col(
                             [
@@ -445,6 +546,23 @@ def control_card():
                                         },
                                     ],
                                     value="total",
+                                    inline=False,
+                                    className="neo-radio",
+                                ),
+                            ],
+                            md=2,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Label("Player Type"),
+                                dcc.RadioItems(
+                                    id="player-type-mode",
+                                    options=[
+                                        {"label": "Starters only", "value": "starters"},
+                                        {"label": "All", "value": "all"},
+                                        {"label": "Subs only", "value": "subs"},
+                                    ],
+                                    value="starters",
                                     inline=False,
                                     className="neo-radio",
                                 ),
@@ -529,10 +647,35 @@ app.layout = dbc.Container(
 )
 
 
-def _apply_filters(df_in: pd.DataFrame, teams_sel, positions_sel, opp_sel, players_sel):
+def _apply_filters(
+    df_in: pd.DataFrame,
+    teams_sel,
+    positions_sel,
+    opp_sel,
+    players_sel,
+    player_type_mode: str,
+):
     dff = df_in.copy()
     if teams_sel:
         dff = dff[dff["team"].isin(teams_sel)]
+    mode = str(player_type_mode or "starters").strip().lower()
+    if mode not in {"all", "starters", "subs"}:
+        mode = "starters"
+
+    if "is_substitute" in dff.columns:
+        sub_mask = _coerce_bool_series(dff["is_substitute"])
+    elif "starter_status" in dff.columns:
+        sub_mask = dff["starter_status"].astype(str).str.strip().str.upper().eq("R")
+    elif "is_starter" in dff.columns:
+        sub_mask = ~_coerce_bool_series(dff["is_starter"])
+    else:
+        sub_mask = pd.Series([False] * len(dff), index=dff.index)
+
+    if mode == "starters":
+        dff = dff[~sub_mask]
+    elif mode == "subs":
+        dff = dff[sub_mask]
+
     if positions_sel:
         dff = dff[dff["position"].isin(positions_sel)]
     if opp_sel and "opponent" in dff.columns:
@@ -551,6 +694,7 @@ def _apply_filters(df_in: pd.DataFrame, teams_sel, positions_sel, opp_sel, playe
     Input("xaxis-group", "value"),
     Input("metric-mode", "value"),
     Input("points-basis", "value"),
+    Input("player-type-mode", "value"),
 )
 def refresh(
     teams_sel,
@@ -560,9 +704,17 @@ def refresh(
     xaxis_group,
     metric_mode,
     points_basis,
+    player_type_mode,
 ):
     # Apply filters and create long form for plotting
-    dff = _apply_filters(df, teams_sel, positions_sel, opp_sel, players_sel)
+    dff = _apply_filters(
+        df,
+        teams_sel,
+        positions_sel,
+        opp_sel,
+        players_sel,
+        player_type_mode,
+    )
     longf = melt_points(dff, points_basis=points_basis)
 
     # Guard empty data
@@ -624,27 +776,7 @@ def refresh(
             team_label_present = False
 
     # Friendly labels for stats and axes
-    stat_label_map = {
-        "Try": "Tries",
-        "Assists": "Assists",
-        "Conversion": "Conversions",
-        "Penalty": "Penalties",
-        "DropGoal": "Drop goals",
-        "DefendersBeaten": "Defenders beaten",
-        "MetresCarried": "Metres carried",
-        "FiftyTwentyTwo": "50-22s",
-        "KicksRecovered": "Kicks recovered",
-        "Offloads": "Offloads",
-        "AttackingScrumWin": "Attacking scrum wins",
-        "Tackles": "Tackles",
-        "BreakdownSteal": "Breakdown steals",
-        "LineoutSteal": "Lineout steals",
-        "PenaltyConceded": "Penalties conceded",
-        "PlayerOfTheMatch": "Player of the Match",
-        "YellowCard": "Yellow cards",
-        "RedCard": "Red cards",
-    }
-    agg["stat_label"] = agg["stat"].map(stat_label_map).fillna(agg["stat"])
+    agg["stat_label"] = agg["stat"].map(STAT_LABEL_MAP).fillna(agg["stat"])
     label_map = {
         "name": "Player",
         "position": "Position",
@@ -663,15 +795,19 @@ def refresh(
         else f"{points_category_title} by Stat"
     ) + f" by {label_map.get(xaxis_group, 'Player')}"
 
-    # Order stack so the largest contribution sits at the bottom (trace order defines stack order)
-    stat_strength = (
-        agg.groupby("stat_label", as_index=False)[y_col]
-        .sum()
-        .sort_values(y_col, ascending=False)
-    )
-    stat_order = stat_strength["stat_label"].tolist()
+    # Keep a stable legend/stack order so colors never reshuffle across filters.
+    present_stat_labels = set(agg["stat_label"].dropna().astype(str))
+    ordered_known_labels = [
+        label for label in STAT_LABEL_ORDER if label in present_stat_labels
+    ]
+    ordered_unknown_labels = sorted(present_stat_labels.difference(ordered_known_labels))
+    stat_order = ordered_known_labels + ordered_unknown_labels
+    color_discrete_map = dict(STAT_COLOR_MAP)
+    for idx, label in enumerate(ordered_unknown_labels):
+        color_discrete_map[label] = px.colors.qualitative.Dark24[
+            idx % len(px.colors.qualitative.Dark24)
+        ]
 
-    COLOR_SEQ = px.colors.qualitative.Dark24
     fig_bar = px.bar(
         agg,
         x=xaxis_group,
@@ -680,7 +816,7 @@ def refresh(
         custom_data=["stat_label", "points", "value"]
         + (["team_label"] if team_label_present else []),
         title=bar_title,
-        color_discrete_sequence=COLOR_SEQ,
+        color_discrete_map=color_discrete_map,
         category_orders={xaxis_group: order, "stat_label": stat_order},
     )
     hover_tmpl = (

@@ -1,3 +1,5 @@
+Note: This project has been entirely vibe-coded using Codex.
+
 Six Nations Fantasy – scraping + scoring breakdown
 =================================================
 
@@ -21,7 +23,15 @@ Quick start
 - Log in to https://fantasy.sixnationsrugby.com/
 - Open DevTools → Network → pick any API call → Copy the `Authorization` header value
 
-3) Export the token before fetching data
+3) Create your `.env` file and add the token
+
+- Create `.env` from the template:
+
+    cp .env.example .env
+
+- Open `.env` and set:
+
+    SIXNATIONS_TOKEN="Token <paste-your-token>"
 
 - macOS/Linux (zsh/bash):
 
@@ -34,6 +44,7 @@ Quick start
 Notes:
 
 - You can also provide the token without the leading "Token "; the code will normalise it.
+- Using `.env` is recommended so the app and ingest script can load the token automatically.
 - Optionally set a custom x-access-key if the default stops working:
 
     export SIXNATIONS_X_ACCESS_KEY="<current-access-key>"

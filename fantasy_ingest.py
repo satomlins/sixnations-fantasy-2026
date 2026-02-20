@@ -1,6 +1,8 @@
 import argparse
 import os
+import re
 import time
+import unicodedata
 from collections.abc import Iterable, Sequence
 from typing import Any, Optional
 
@@ -22,6 +24,12 @@ DEFAULT_X_ACCESS_KEY = "600@18.23@"
 DEFAULT_MATCH_IDS: tuple[int, ...] = tuple(range(1, 16))
 DEFAULT_MIN_REFRESH_SECONDS = 60
 DEFAULT_REFRESH_STATE_PATH = "data/.last_api_refresh"
+DEFAULT_MAX_JOURNEES = 10
+SEARCHJOUEURS_PAGE_SIZE = 100
+
+STARTER_STATUS_STARTER = "T"
+STARTER_STATUS_SUB = "R"
+STARTER_STATUS_DNP = "N"
 
 CONSISTENT_POINTS_EXCLUDED_STATS: tuple[str, ...] = (
     "Try",
@@ -96,6 +104,7 @@ CONSISTENT_POINTS_EXCLUDED_COLUMNS = {
 }
 GOOD_POINTS_EXCLUDED_COLUMNS = CONSISTENT_POINTS_EXCLUDED_COLUMNS
 DERIVED_POINT_COLUMNS = {"total_points", "consistent_points", "good_points"}
+_LOOKUP_NORMALISER_RE = re.compile(r"[^a-z0-9]+")
 
 
 def _build_session() -> requests.Session:
@@ -152,6 +161,408 @@ def _seconds_until_refresh_allowed(
     return max(0.0, float(min_interval_seconds) - elapsed)
 
 
+def _build_api_headers(
+    token: Optional[str] = None,
+    x_access_key: Optional[str] = None,
+    include_content_type: bool = True,
+) -> dict[str, str]:
+    headers = {
+        "accept": "application/json",
+        "cache-control": "no-cache",
+        "pragma": "no-cache",
+        "x-access-key": x_access_key
+        or os.getenv("SIXNATIONS_X_ACCESS_KEY", DEFAULT_X_ACCESS_KEY),
+    }
+    if include_content_type:
+        headers["content-type"] = "application/json"
+
+    auth = _normalise_token(token or os.getenv("SIXNATIONS_TOKEN"))
+    if auth:
+        headers["authorization"] = auth
+    return headers
+
+
+def _normalise_lookup_text(value: Any) -> str:
+    if value is None:
+        return ""
+    text = unicodedata.normalize("NFKD", str(value))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower()
+    text = _LOOKUP_NORMALISER_RE.sub(" ", text)
+    return " ".join(text.split())
+
+
+def _decode_starter_flag(status_code: Optional[str]) -> Optional[bool]:
+    if not status_code:
+        return None
+    code = str(status_code).strip().upper()
+    if code == STARTER_STATUS_STARTER:
+        return True
+    if code in {STARTER_STATUS_SUB, STARTER_STATUS_DNP}:
+        return False
+    return None
+
+
+def _fetch_current_journee_id(
+    language: str = "en",
+    token: Optional[str] = None,
+    x_access_key: Optional[str] = None,
+    session: Optional[requests.Session] = None,
+) -> Optional[int]:
+    request_url = f"{BASE_URL}/v1/private/journee?lg={language}"
+    headers = _build_api_headers(
+        token=token,
+        x_access_key=x_access_key,
+        include_content_type=False,
+    )
+
+    local_session = session or _build_session()
+    close_local_session = session is None
+    try:
+        response = local_session.get(
+            request_url,
+            headers=headers,
+            allow_redirects=True,
+            timeout=20,
+        )
+    finally:
+        if close_local_session:
+            local_session.close()
+
+    if response.status_code in (401, 403):
+        raise RuntimeError(
+            "Unauthorized (401/403). Ensure SIXNATIONS_TOKEN is set correctly."
+        )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        return None
+    journee = payload.get("journee")
+    if not isinstance(journee, dict):
+        return None
+    try:
+        return int(journee.get("id"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _fetch_journee_round_map(
+    language: str = "en",
+    token: Optional[str] = None,
+    x_access_key: Optional[str] = None,
+    max_journees: int = DEFAULT_MAX_JOURNEES,
+    session: Optional[requests.Session] = None,
+) -> dict[int, int]:
+    headers = _build_api_headers(
+        token=token,
+        x_access_key=x_access_key,
+        include_content_type=False,
+    )
+    local_session = session or _build_session()
+    close_local_session = session is None
+
+    round_by_match_id: dict[int, int] = {}
+    found_any = False
+    empty_streak = 0
+
+    try:
+        for journee_id in range(1, max(1, int(max_journees)) + 1):
+            request_url = (
+                f"{BASE_URL}/v1/private/journeecalendrier/{journee_id}?lg={language}"
+            )
+            response = local_session.get(
+                request_url,
+                headers=headers,
+                allow_redirects=True,
+                timeout=20,
+            )
+
+            if response.status_code in (401, 403):
+                raise RuntimeError(
+                    "Unauthorized (401/403). Ensure SIXNATIONS_TOKEN is set correctly."
+                )
+            response.raise_for_status()
+
+            payload = response.json()
+            journee = payload.get("journee", {}) if isinstance(payload, dict) else {}
+            matches = journee.get("matchs") or []
+
+            if not matches:
+                if found_any:
+                    empty_streak += 1
+                    if empty_streak >= 2:
+                        break
+                continue
+
+            found_any = True
+            empty_streak = 0
+
+            for match_obj in matches:
+                try:
+                    match_id = int(match_obj.get("id"))
+                except (TypeError, ValueError):
+                    continue
+                round_by_match_id[match_id] = journee_id
+    finally:
+        if close_local_session:
+            local_session.close()
+
+    return round_by_match_id
+
+
+def _fetch_searchjoueurs_players(
+    journee_id: int,
+    language: str = "en",
+    token: Optional[str] = None,
+    x_access_key: Optional[str] = None,
+    page_size: int = SEARCHJOUEURS_PAGE_SIZE,
+    session: Optional[requests.Session] = None,
+) -> list[dict[str, Any]]:
+    request_url = f"{BASE_URL}/v1/private/searchjoueurs?lg={language}"
+    headers = _build_api_headers(
+        token=token,
+        x_access_key=x_access_key,
+        include_content_type=True,
+    )
+
+    local_session = session or _build_session()
+    close_local_session = session is None
+
+    players: list[dict[str, Any]] = []
+    total_expected: Optional[int] = None
+    current_page_size = max(1, int(page_size))
+    page_index = 0
+
+    try:
+        while True:
+            payload = {
+                "filters": {
+                    "nom": "",
+                    "club": "",
+                    "position": "",
+                    "budget_ok": False,
+                    "valeur_max": 25,
+                    "engage": False,
+                    "partant": False,
+                    "dreamteam": False,
+                    "quota": "",
+                    "idj": str(journee_id),
+                    "pageIndex": page_index,
+                    "pageSize": current_page_size,
+                    "loadSelect": 0,
+                    "searchonly": 1,
+                }
+            }
+            response = local_session.post(
+                request_url,
+                headers=headers,
+                json=payload,
+                allow_redirects=True,
+                timeout=20,
+            )
+
+            if response.status_code in (401, 403):
+                raise RuntimeError(
+                    "Unauthorized (401/403). Ensure SIXNATIONS_TOKEN is set correctly."
+                )
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, dict):
+                break
+
+            page_players = data.get("joueurs") or []
+            if not isinstance(page_players, list) or not page_players:
+                break
+
+            players.extend([p for p in page_players if isinstance(p, dict)])
+
+            if total_expected is None:
+                raw_total = data.get("total")
+                try:
+                    total_expected = int(str(raw_total).strip())
+                except (TypeError, ValueError):
+                    total_expected = None
+
+            page_index += 1
+            if total_expected is not None and len(players) >= total_expected:
+                break
+    finally:
+        if close_local_session:
+            local_session.close()
+
+    return players
+
+
+def _build_starter_history_lookup(
+    players: Sequence[dict[str, Any]],
+) -> dict[tuple[str, str], dict[int, str]]:
+    lookup: dict[tuple[str, str], dict[int, str]] = {}
+
+    for player in players:
+        player_name = _normalise_lookup_text(player.get("nom"))
+        team_name = _normalise_lookup_text(player.get("club"))
+        if not player_name or not team_name:
+            continue
+
+        forme = player.get("forme")
+        items = forme.get("items") if isinstance(forme, dict) else []
+        if not isinstance(items, list):
+            items = []
+
+        history: dict[int, str] = {}
+        for idx, code in enumerate(items, start=1):
+            norm_code = str(code).strip().upper()
+            if not norm_code:
+                continue
+            history[idx] = norm_code
+
+        if not history:
+            continue
+
+        key = (player_name, team_name)
+        existing = lookup.get(key)
+        if existing is None or len(history) > len(existing):
+            lookup[key] = history
+
+    return lookup
+
+
+def annotate_starter_status(
+    df: pd.DataFrame,
+    language: str = "en",
+    token: Optional[str] = None,
+    x_access_key: Optional[str] = None,
+    verbose: bool = True,
+) -> tuple[pd.DataFrame, list[str]]:
+    notices: list[str] = []
+
+    if df.empty:
+        df = df.copy()
+        df["starter_status"] = pd.Series(dtype="object")
+        df["is_starter"] = pd.Series(dtype="boolean")
+        df["is_substitute"] = pd.Series(dtype="boolean")
+        df["position_fixture"] = pd.Series(dtype="object")
+        return df, notices
+
+    required_cols = {"match_id", "name", "team", "position"}
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        msg = f"Starter/sub enrichment skipped: missing columns {missing_cols}."
+        notices.append(msg)
+        if verbose:
+            print(msg)
+        out = df.copy()
+        out["starter_status"] = pd.NA
+        out["is_starter"] = pd.array([pd.NA] * len(out), dtype="boolean")
+        out["is_substitute"] = pd.array([pd.NA] * len(out), dtype="boolean")
+        out["position_fixture"] = out.get("position", pd.Series(dtype="object"))
+        return out, notices
+
+    session = _build_session()
+    try:
+        current_journee_id = _fetch_current_journee_id(
+            language=language,
+            token=token,
+            x_access_key=x_access_key,
+            session=session,
+        )
+        if current_journee_id is None:
+            raise RuntimeError("could not determine current journee id")
+
+        round_by_match_id = _fetch_journee_round_map(
+            language=language,
+            token=token,
+            x_access_key=x_access_key,
+            session=session,
+        )
+        if not round_by_match_id:
+            raise RuntimeError("no journee/match mapping returned")
+
+        search_players = _fetch_searchjoueurs_players(
+            journee_id=current_journee_id,
+            language=language,
+            token=token,
+            x_access_key=x_access_key,
+            session=session,
+        )
+        starter_lookup = _build_starter_history_lookup(search_players)
+        if not starter_lookup:
+            raise RuntimeError("no starter history rows returned")
+    except Exception as exc:
+        msg = f"Starter/sub enrichment skipped due to error -> {exc}"
+        notices.append(msg)
+        if verbose:
+            print(msg)
+        out = df.copy()
+        out["starter_status"] = pd.NA
+        out["is_starter"] = pd.array([pd.NA] * len(out), dtype="boolean")
+        out["is_substitute"] = pd.array([pd.NA] * len(out), dtype="boolean")
+        out["position_fixture"] = out.get("position", pd.Series(dtype="object"))
+        return out, notices
+    finally:
+        session.close()
+
+    out = df.copy()
+    starter_statuses: list[Optional[str]] = []
+
+    for match_id, player_name, team_name in zip(
+        out["match_id"], out["name"], out["team"]
+    ):
+        try:
+            match_id_int = int(match_id)
+        except (TypeError, ValueError):
+            starter_statuses.append(None)
+            continue
+
+        round_number = round_by_match_id.get(match_id_int)
+        if round_number is None:
+            starter_statuses.append(None)
+            continue
+
+        player_key = (
+            _normalise_lookup_text(player_name),
+            _normalise_lookup_text(team_name),
+        )
+        player_history = starter_lookup.get(player_key) or {}
+        starter_statuses.append(player_history.get(int(round_number)))
+
+    out["starter_status"] = pd.Series(starter_statuses, index=out.index, dtype="object")
+    out["is_starter"] = pd.array(
+        [_decode_starter_flag(code) for code in starter_statuses],
+        dtype="boolean",
+    )
+    out["is_substitute"] = pd.array(
+        [
+            (str(code).strip().upper() == STARTER_STATUS_SUB)
+            if code not in (None, "")
+            else pd.NA
+            for code in starter_statuses
+        ],
+        dtype="boolean",
+    )
+
+    base_position = (
+        out["position"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    out["position"] = base_position
+    out["position_fixture"] = base_position
+    sub_mask = out["starter_status"] == STARTER_STATUS_SUB
+    out.loc[sub_mask, "position_fixture"] = base_position[sub_mask] + " sub"
+
+    matched_count = int(out["starter_status"].notna().sum())
+    if verbose:
+        print(f"Starter/sub enrichment matched {matched_count}/{len(out)} rows.")
+    if matched_count < len(out):
+        notices.append(
+            f"Starter/sub enrichment: {len(out) - matched_count} rows had no status mapping."
+        )
+
+    return out, notices
+
+
 def fetch_match_payload(
     match_id: int,
     language: str = "en",
@@ -161,17 +572,11 @@ def fetch_match_payload(
 ) -> dict[str, Any]:
     """Fetch one match payload from the Six Nations private fantasy API."""
     request_url = f"{BASE_URL}/v1/private/match/{match_id}?lg={language}"
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "cache-control": "no-cache",
-        "pragma": "no-cache",
-        "x-access-key": x_access_key or os.getenv("SIXNATIONS_X_ACCESS_KEY", DEFAULT_X_ACCESS_KEY),
-    }
-
-    auth = _normalise_token(token or os.getenv("SIXNATIONS_TOKEN"))
-    if auth:
-        headers["authorization"] = auth
+    headers = _build_api_headers(
+        token=token,
+        x_access_key=x_access_key,
+        include_content_type=True,
+    )
 
     local_session = session or _build_session()
     close_local_session = session is None
@@ -721,6 +1126,16 @@ def refresh_all_matches(
         )
 
     df = build_players_dataframe(payloads)
+    df, starter_notices = annotate_starter_status(
+        df,
+        language=language,
+        token=token,
+        x_access_key=x_access_key,
+        verbose=verbose,
+    )
+    if starter_notices:
+        notices.extend(starter_notices)
+
     upsert_dataframe_to_duckdb(
         df,
         db_path=db_path,
