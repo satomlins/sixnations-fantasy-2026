@@ -23,7 +23,10 @@ BASE_URL = "https://fantasy.sixnationsrugby.com"
 DEFAULT_X_ACCESS_KEY = "600@18.23@"
 DEFAULT_MATCH_IDS: tuple[int, ...] = tuple(range(1, 16))
 DEFAULT_MIN_REFRESH_SECONDS = 60
-DEFAULT_REFRESH_STATE_PATH = "data/.last_api_refresh"
+DEFAULT_DATA_DIR = "data"
+DATA_DIR_ENV_VAR = "SIXNATIONS_DATA_DIR"
+DEFAULT_DB_FILENAME = "all_matches.duckdb"
+DEFAULT_REFRESH_STATE_FILENAME = ".last_api_refresh"
 DEFAULT_MAX_JOURNEES = 10
 SEARCHJOUEURS_PAGE_SIZE = 100
 
@@ -105,6 +108,19 @@ CONSISTENT_POINTS_EXCLUDED_COLUMNS = {
 GOOD_POINTS_EXCLUDED_COLUMNS = CONSISTENT_POINTS_EXCLUDED_COLUMNS
 DERIVED_POINT_COLUMNS = {"total_points", "consistent_points", "good_points"}
 _LOOKUP_NORMALISER_RE = re.compile(r"[^a-z0-9]+")
+
+
+def get_data_dir() -> str:
+    raw = os.getenv(DATA_DIR_ENV_VAR, DEFAULT_DATA_DIR).strip()
+    return raw or DEFAULT_DATA_DIR
+
+
+def get_default_db_path() -> str:
+    return os.path.join(get_data_dir(), DEFAULT_DB_FILENAME)
+
+
+def get_default_refresh_state_path() -> str:
+    return os.path.join(get_data_dir(), DEFAULT_REFRESH_STATE_FILENAME)
 
 
 def _build_session() -> requests.Session:
@@ -906,9 +922,11 @@ def _qident(identifier: str) -> str:
 
 
 def load_duckdb_table(
-    db_path: str = "data/all_matches.duckdb",
+    db_path: Optional[str] = None,
     table_name: str = "all_matches",
 ) -> pd.DataFrame:
+    if db_path is None:
+        db_path = get_default_db_path()
     if not os.path.exists(db_path):
         return pd.DataFrame()
     con = duckdb.connect(db_path, read_only=True)
@@ -930,10 +948,12 @@ def load_duckdb_table(
 
 def upsert_dataframe_to_duckdb(
     df: pd.DataFrame,
-    db_path: str = "data/all_matches.duckdb",
+    db_path: Optional[str] = None,
     table_name: str = "all_matches",
     replace_match_ids: Optional[Iterable[int]] = None,
 ) -> None:
+    if db_path is None:
+        db_path = get_default_db_path()
     directory = os.path.dirname(db_path)
     if directory:
         os.makedirs(directory, exist_ok=True)
@@ -1086,13 +1106,17 @@ def refresh_all_matches(
     language: str = "en",
     token: Optional[str] = None,
     x_access_key: Optional[str] = None,
-    db_path: str = "data/all_matches.duckdb",
+    db_path: Optional[str] = None,
     table_name: str = "all_matches",
     min_interval_seconds: int = DEFAULT_MIN_REFRESH_SECONDS,
-    refresh_state_path: str = DEFAULT_REFRESH_STATE_PATH,
+    refresh_state_path: Optional[str] = None,
     allow_cached_on_rate_limit: bool = True,
     verbose: bool = True,
 ) -> tuple[pd.DataFrame, list[str]]:
+    if db_path is None:
+        db_path = get_default_db_path()
+    if refresh_state_path is None:
+        refresh_state_path = get_default_refresh_state_path()
     match_ids = [int(mid) for mid in match_ids]
 
     wait_seconds = _seconds_until_refresh_allowed(
@@ -1178,8 +1202,11 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--db-path",
-        default="data/all_matches.duckdb",
-        help="DuckDB path (default: data/all_matches.duckdb).",
+        default=get_default_db_path(),
+        help=(
+            "DuckDB path "
+            f"(default: {get_default_db_path()}, overridable via {DATA_DIR_ENV_VAR})."
+        ),
     )
     parser.add_argument(
         "--table-name",

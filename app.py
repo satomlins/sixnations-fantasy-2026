@@ -9,7 +9,12 @@ import pandas as pd
 import plotly.express as px
 from dash import Dash, Input, Output, dcc, html
 from dotenv import load_dotenv
-from fantasy_ingest import CONSISTENT_POINTS_EXCLUDED_STATS, refresh_all_matches
+from fantasy_ingest import (
+    CONSISTENT_POINTS_EXCLUDED_STATS,
+    get_default_db_path,
+    get_default_refresh_state_path,
+    refresh_all_matches,
+)
 
 load_dotenv()
 
@@ -138,7 +143,7 @@ def _latest_file(patterns: List[str]) -> Optional[str]:
 
 def _last_pulled_utc_label() -> str:
     """Best-effort label for when data was last pulled from the API."""
-    state_path = os.path.join("data", ".last_api_refresh")
+    state_path = get_default_refresh_state_path()
     try:
         if os.path.exists(state_path):
             with open(state_path, "r", encoding="utf-8") as fh:
@@ -149,7 +154,7 @@ def _last_pulled_utc_label() -> str:
     except (OSError, ValueError):
         pass
 
-    db_path = os.path.join("data", "all_matches.duckdb")
+    db_path = get_default_db_path()
     if os.path.exists(db_path):
         dt = datetime.fromtimestamp(os.path.getmtime(db_path), tz=timezone.utc)
         return dt.strftime("%Y-%m-%d %H:%M UTC")
@@ -158,12 +163,14 @@ def _last_pulled_utc_label() -> str:
 
 
 def load_latest_df() -> pd.DataFrame:
-    os.makedirs("data", exist_ok=True)
-    fixed_path = os.path.join("data", "all_matches.duckdb")
-    path = fixed_path if os.path.exists(fixed_path) else _latest_file(["data/*.duckdb"])
+    fixed_path = get_default_db_path()
+    data_dir = os.path.dirname(fixed_path) or "."
+    os.makedirs(data_dir, exist_ok=True)
+    pattern = os.path.join(data_dir, "*.duckdb")
+    path = fixed_path if os.path.exists(fixed_path) else _latest_file([pattern])
     if path is None:
         raise FileNotFoundError(
-            "No saved DuckDB data found in ./data. Run `python fantasy_ingest.py` first."
+            f"No saved DuckDB data found in {data_dir}. Run `python fantasy_ingest.py` first."
         )
     con = duckdb.connect(path, read_only=True)
     try:

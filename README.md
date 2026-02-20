@@ -45,6 +45,10 @@ Notes:
 
 - You can also provide the token without the leading "Token "; the code will normalise it.
 - Using `.env` is recommended so the app and ingest script can load the token automatically.
+- Data files default to `./data`, but you can move runtime data elsewhere with:
+
+    SIXNATIONS_DATA_DIR=/var/lib/fantasysn
+
 - Optionally set a custom x-access-key if the default stops working:
 
     export SIXNATIONS_X_ACCESS_KEY="<current-access-key>"
@@ -62,9 +66,9 @@ Notes:
 Persist and explore with a dashboard
 ------------------------------------
 
-After running the ingest script, a `data/` folder will contain a combined export of all available matches (1–15):
+After running the ingest script, your configured data directory (`SIXNATIONS_DATA_DIR`, default `data/`) will contain a combined export of all available matches (1–15):
 
-- `data/all_matches.duckdb` (table: `all_matches`)
+- `<SIXNATIONS_DATA_DIR>/all_matches.duckdb` (table: `all_matches`)
 
 Run the dashboard:
 
@@ -111,8 +115,9 @@ Notes
 Development notes
 -----------------
 
-- Data files are written to a single combined DuckDB database: `data/all_matches.duckdb` (updated in place each run).
-- The dashboard reads `data/all_matches.duckdb` if present, otherwise the latest DuckDB file from `data/`.
+- Data files are written to a single combined DuckDB database: `<SIXNATIONS_DATA_DIR>/all_matches.duckdb` (default `data/all_matches.duckdb`, updated in place each run).
+- For production, set `SIXNATIONS_DATA_DIR` to a persistent path outside the repo (for example `/var/lib/fantasysn` on Linux).
+- The dashboard reads from the configured DuckDB path and falls back to the latest DuckDB file in the same directory.
 - The ingest step upserts rows by `(match_id, id)` so older matches remain unless refreshed.
 - API pulls are throttled to at most once per 60 seconds by default (`SIXNATIONS_MIN_REFRESH_SECONDS`).
 - The dashboard can auto-refresh from the API on startup:
