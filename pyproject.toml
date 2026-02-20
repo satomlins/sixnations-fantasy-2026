@@ -20,8 +20,8 @@ dependencies = [
 ]
 
 [project.scripts]
-fantasysn-dashboard = "app:main"
-fantasysn-ingest = "fantasy_ingest:main"
+fantasy6n-dashboard = "app:main"
+fantasy6n-ingest = "fantasy_ingest:main"
 
 [tool.setuptools]
 py-modules = ["app", "fantasy_ingest"]

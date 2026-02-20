@@ -47,7 +47,7 @@ Notes:
 - Using `.env` is recommended so the app and ingest script can load the token automatically.
 - Data files default to `./data`, but you can move runtime data elsewhere with:
 
-    SIXNATIONS_DATA_DIR=/var/lib/fantasysn
+    SIXNATIONS_DATA_DIR=/var/lib/fantasy6n
 
 - Optionally set a custom x-access-key if the default stops working:
 
@@ -57,7 +57,7 @@ Notes:
 
 - Using uv:
 
-    uv run fantasysn-ingest
+    uv run fantasy6n-ingest
 
 - Or with your active venv:
 
@@ -74,7 +74,7 @@ Run the dashboard:
 
 – Using uv:
 
-    uv run fantasysn-dashboard
+    uv run fantasy6n-dashboard
 
 - Or with your active venv:
 
@@ -116,7 +116,7 @@ Development notes
 -----------------
 
 - Data files are written to a single combined DuckDB database: `<SIXNATIONS_DATA_DIR>/all_matches.duckdb` (default `data/all_matches.duckdb`, updated in place each run).
-- For production, set `SIXNATIONS_DATA_DIR` to a persistent path outside the repo (for example `/var/lib/fantasysn` on Linux).
+- For production, set `SIXNATIONS_DATA_DIR` to a persistent path outside the repo (for example `/var/lib/fantasy6n` on Linux).
 - The dashboard reads from the configured DuckDB path and falls back to the latest DuckDB file in the same directory.
 - The ingest step upserts rows by `(match_id, id)` so older matches remain unless refreshed.
 - API pulls are throttled to at most once per 60 seconds by default (`SIXNATIONS_MIN_REFRESH_SECONDS`).

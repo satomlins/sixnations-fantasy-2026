@@ -669,18 +669,18 @@ app.layout = dbc.Container(
                 html.A(
                     [
                         html.Img(
-                            src="/assets/linkedin-icon.svg",
+                            src="/assets/favicon-32x32.png",
                             className="linkedin-logo-img",
                             alt="",
                             **{"aria-hidden": "true"},
                         ),
-                        html.Span("LinkedIn", className="footer-sr"),
+                        html.Span("Fantasy6N", className="footer-sr"),
                     ],
-                    href="https://linkedin.stomlins.com",
+                    href="https://fantasy6n.stomlins.com",
                     target="_blank",
                     rel="noopener noreferrer",
                     className="footer-linkedin",
-                    title="Scott Tomlins on LinkedIn",
+                    title="Fantasy 6N",
                 ),
             ],
             className="app-footer",
