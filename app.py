@@ -91,6 +91,14 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
     return normalized.isin({"1", "true", "t", "yes", "y"})
 
 
+def _build_name_opponent_label(name_series: pd.Series, opponent_series: pd.Series) -> pd.Series:
+    names = name_series.fillna("Player").astype(str).str.strip()
+    names = names.where(names != "", "Player")
+    opponents = opponent_series.fillna("Unknown").astype(str).str.strip()
+    opponents = opponents.where(opponents != "", "Unknown")
+    return names + " vs " + opponents
+
+
 def _maybe_refresh_from_api() -> None:
     """Optionally refresh DuckDB from the API on app startup.
 
@@ -513,6 +521,10 @@ def control_card():
                                     id="xaxis-group",
                                     options=[
                                         {"label": "Player", "value": "name"},
+                                        {
+                                            "label": "Player vs Opponent",
+                                            "value": "name_opponent",
+                                        },
                                         {"label": "Position", "value": "position"},
                                         {"label": "Team", "value": "team"},
                                         {"label": "Opponent", "value": "opponent"},
@@ -534,6 +546,17 @@ def control_card():
                                         {"label": "Points", "value": "points"},
                                     ],
                                     value="points",
+                                    inline=False,
+                                    className="neo-radio",
+                                ),
+                                dbc.Label("Aggregation", className="mt-2"),
+                                dcc.RadioItems(
+                                    id="aggregate-mode",
+                                    options=[
+                                        {"label": "Total", "value": "total"},
+                                        {"label": "Average", "value": "average"},
+                                    ],
+                                    value="total",
                                     inline=False,
                                     className="neo-radio",
                                 ),
@@ -700,6 +723,7 @@ def _apply_filters(
     Input("player-filter", "value"),
     Input("xaxis-group", "value"),
     Input("metric-mode", "value"),
+    Input("aggregate-mode", "value"),
     Input("points-basis", "value"),
     Input("player-type-mode", "value"),
 )
@@ -710,6 +734,7 @@ def refresh(
     players_sel,
     xaxis_group,
     metric_mode,
+    aggregate_mode,
     points_basis,
     player_type_mode,
 ):
@@ -735,13 +760,40 @@ def refresh(
         return empty_fig
 
     # Validate x-axis group
-    if xaxis_group not in {"name", "position", "team", "opponent"}:
+    valid_xaxis_groups = {"name", "name_opponent", "position", "team", "opponent"}
+    if xaxis_group not in valid_xaxis_groups:
         xaxis_group = "name"
+
+    # Optional combined grouping for single-fixture style comparisons.
+    if xaxis_group == "name_opponent":
+        dff = dff.copy()
+        longf = longf.copy()
+        dff["name_opponent"] = _build_name_opponent_label(
+            dff["name"]
+            if "name" in dff.columns
+            else pd.Series(["Player"] * len(dff), index=dff.index),
+            dff["opponent"]
+            if "opponent" in dff.columns
+            else pd.Series([pd.NA] * len(dff), index=dff.index),
+        )
+        longf["name_opponent"] = _build_name_opponent_label(
+            longf["name"]
+            if "name" in longf.columns
+            else pd.Series(["Player"] * len(longf), index=longf.index),
+            longf["opponent"]
+            if "opponent" in longf.columns
+            else pd.Series([pd.NA] * len(longf), index=longf.index),
+        )
+
+    aggregate_mode = str(aggregate_mode or "total").strip().lower()
+    if aggregate_mode not in {"total", "average"}:
+        aggregate_mode = "total"
+    agg_fn = "mean" if aggregate_mode == "average" else "sum"
 
     # Aggregate to group level
     dlong = longf.dropna(subset=[xaxis_group]).copy()
     agg = dlong.groupby([xaxis_group, "stat"], as_index=False).agg(
-        points=("points", "sum"), value=("value", "sum")
+        points=("points", agg_fn), value=("value", agg_fn)
     )
     totals_by_group = (
         agg.groupby(xaxis_group, as_index=False)["points"]
@@ -757,8 +809,8 @@ def refresh(
         xaxis_group
     ].tolist()
 
-    # Keep the chart readable when grouping by player.
-    if xaxis_group == "name" and len(order) > 30:
+    # Keep the chart readable for dense x-axis groupings.
+    if xaxis_group in {"name", "name_opponent"} and len(order) > 30:
         order = order[:30]
         agg = agg[agg[xaxis_group].isin(order)].copy()
 
@@ -786,6 +838,7 @@ def refresh(
     agg["stat_label"] = agg["stat"].map(STAT_LABEL_MAP).fillna(agg["stat"])
     label_map = {
         "name": "Player",
+        "name_opponent": "Player vs Opponent",
         "position": "Position",
         "team": "Team",
         "opponent": "Opponent",
@@ -793,9 +846,9 @@ def refresh(
 
     # Build stacked bar figure
     y_col = "pct" if metric_mode == "pct" else "points"
-    points_category_title = (
-        "Consistent Points" if points_basis == "consistent" else "Total Points"
-    )
+    points_basis_label = "Consistent Points" if points_basis == "consistent" else "Points"
+    aggregation_label = "Average" if aggregate_mode == "average" else "Total"
+    points_category_title = f"{aggregation_label} {points_basis_label}"
     bar_title = (
         f"% Contribution by Stat ({points_category_title})"
         if metric_mode == "pct"
@@ -826,16 +879,19 @@ def refresh(
         color_discrete_map=color_discrete_map,
         category_orders={xaxis_group: order, "stat_label": stat_order},
     )
+    points_hover_label = "Avg Points" if aggregate_mode == "average" else "Points"
+    value_hover_label = "Avg Value" if aggregate_mode == "average" else "Value"
+    value_hover_fmt = ".1f" if aggregate_mode == "average" else ".0f"
     hover_tmpl = (
         f"{label_map.get(xaxis_group, 'Player')}: %{{x}}<br>"
         "Stat: %{customdata[0]}<br>"
-        "Points: %{customdata[1]:.1f}<br>"
+        f"{points_hover_label}: %{{customdata[1]:.1f}}<br>"
     )
     if metric_mode == "pct":
         hover_tmpl += "%: %{y:.1f}<br>"
     if team_label_present:
         hover_tmpl += "Team: %{customdata[3]}<br>"
-    hover_tmpl += "Count: %{customdata[2]:.0f}<extra></extra>"
+    hover_tmpl += f"{value_hover_label}: %{{customdata[2]:{value_hover_fmt}}}<extra></extra>"
     fig_bar.update_traces(hovertemplate=hover_tmpl)
     # Ensure x-axis categories are ordered by total size (desc), not alphabetically
     fig_bar.update_xaxes(categoryorder="array", categoryarray=order)
