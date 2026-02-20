@@ -53,7 +53,7 @@ Notes:
 
 - Using uv:
 
-    uv run python fantasy_ingest.py
+    uv run fantasysn-ingest
 
 - Or with your active venv:
 
@@ -70,7 +70,7 @@ Run the dashboard:
 
 – Using uv:
 
-    uv run python app.py
+    uv run fantasysn-dashboard
 
 - Or with your active venv:
 

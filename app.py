@@ -936,6 +936,16 @@ def refresh(
     return fig_bar
 
 
-if __name__ == "__main__":
+def main() -> None:
     # Dash >=2.17 deprecates run_server in favor of run
-    app.run(debug=True, port=int(os.getenv("PORT", "8050")))
+    debug_mode = os.getenv("DASH_DEBUG", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    app.run(debug=debug_mode, port=int(os.getenv("PORT", "8050")))
+
+
+if __name__ == "__main__":
+    main()
