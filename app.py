@@ -99,6 +99,16 @@ def _build_name_opponent_label(name_series: pd.Series, opponent_series: pd.Serie
     return names + " vs " + opponents
 
 
+def _build_position_opponent_label(
+    position_series: pd.Series, opponent_series: pd.Series
+) -> pd.Series:
+    positions = position_series.fillna("Position").astype(str).str.strip()
+    positions = positions.where(positions != "", "Position")
+    opponents = opponent_series.fillna("Unknown").astype(str).str.strip()
+    opponents = opponents.where(opponents != "", "Unknown")
+    return positions + " vs " + opponents
+
+
 def _maybe_refresh_from_api() -> None:
     """Optionally refresh DuckDB from the API on app startup.
 
@@ -525,6 +535,10 @@ def control_card():
                                             "label": "Player vs Opponent",
                                             "value": "name_opponent",
                                         },
+                                        {
+                                            "label": "Position vs Opponent",
+                                            "value": "position_opponent",
+                                        },
                                         {"label": "Position", "value": "position"},
                                         {"label": "Team", "value": "team"},
                                         {"label": "Opponent", "value": "opponent"},
@@ -546,7 +560,7 @@ def control_card():
                                         {"label": "Points", "value": "points"},
                                     ],
                                     value="points",
-                                    inline=False,
+                                    inline=True,
                                     className="neo-radio",
                                 ),
                                 dbc.Label("Aggregation", className="mt-2"),
@@ -557,7 +571,7 @@ def control_card():
                                         {"label": "Average", "value": "average"},
                                     ],
                                     value="total",
-                                    inline=False,
+                                    inline=True,
                                     className="neo-radio",
                                 ),
                             ],
@@ -576,7 +590,7 @@ def control_card():
                                         },
                                     ],
                                     value="total",
-                                    inline=False,
+                                    inline=True,
                                     className="neo-radio",
                                 ),
                             ],
@@ -593,7 +607,7 @@ def control_card():
                                         {"label": "Subs only", "value": "subs"},
                                     ],
                                     value="starters",
-                                    inline=False,
+                                    inline=True,
                                     className="neo-radio",
                                 ),
                             ],
@@ -760,7 +774,14 @@ def refresh(
         return empty_fig
 
     # Validate x-axis group
-    valid_xaxis_groups = {"name", "name_opponent", "position", "team", "opponent"}
+    valid_xaxis_groups = {
+        "name",
+        "name_opponent",
+        "position_opponent",
+        "position",
+        "team",
+        "opponent",
+    }
     if xaxis_group not in valid_xaxis_groups:
         xaxis_group = "name"
 
@@ -780,6 +801,25 @@ def refresh(
             longf["name"]
             if "name" in longf.columns
             else pd.Series(["Player"] * len(longf), index=longf.index),
+            longf["opponent"]
+            if "opponent" in longf.columns
+            else pd.Series([pd.NA] * len(longf), index=longf.index),
+        )
+    elif xaxis_group == "position_opponent":
+        dff = dff.copy()
+        longf = longf.copy()
+        dff["position_opponent"] = _build_position_opponent_label(
+            dff["position"]
+            if "position" in dff.columns
+            else pd.Series(["Position"] * len(dff), index=dff.index),
+            dff["opponent"]
+            if "opponent" in dff.columns
+            else pd.Series([pd.NA] * len(dff), index=dff.index),
+        )
+        longf["position_opponent"] = _build_position_opponent_label(
+            longf["position"]
+            if "position" in longf.columns
+            else pd.Series(["Position"] * len(longf), index=longf.index),
             longf["opponent"]
             if "opponent" in longf.columns
             else pd.Series([pd.NA] * len(longf), index=longf.index),
@@ -810,7 +850,7 @@ def refresh(
     ].tolist()
 
     # Keep the chart readable for dense x-axis groupings.
-    if xaxis_group in {"name", "name_opponent"} and len(order) > 30:
+    if xaxis_group in {"name", "name_opponent", "position_opponent"} and len(order) > 30:
         order = order[:30]
         agg = agg[agg[xaxis_group].isin(order)].copy()
 
@@ -839,6 +879,7 @@ def refresh(
     label_map = {
         "name": "Player",
         "name_opponent": "Player vs Opponent",
+        "position_opponent": "Position vs Opponent",
         "position": "Position",
         "team": "Team",
         "opponent": "Opponent",

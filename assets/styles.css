@@ -285,16 +285,19 @@ h5,
 }
 
 .neo-radio {
-  display: grid;
-  gap: 0.42rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 1.15rem;
   margin-top: 0.32rem;
 }
 
 .neo-radio label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.58rem;
   margin: 0;
+  white-space: nowrap;
   color: var(--sn-white) !important;
   font-size: 1.02rem;
   font-weight: 600;
