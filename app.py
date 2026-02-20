@@ -459,7 +459,7 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=4,
+                            md=3,
                         ),
                         dbc.Col(
                             [
@@ -475,7 +475,7 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=4,
+                            md=3,
                         ),
                         dbc.Col(
                             [
@@ -492,14 +492,8 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=4,
+                            md=3,
                         ),
-                    ],
-                    className="gy-2",
-                ),
-                html.Hr(),
-                dbc.Row(
-                    [
                         dbc.Col(
                             [
                                 dbc.Label("Players"),
@@ -512,8 +506,14 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=4,
+                            md=3,
                         ),
+                    ],
+                    className="gy-2",
+                ),
+                html.Hr(),
+                dbc.Row(
+                    [
                         dbc.Col(
                             [
                                 dbc.Label("X Axis"),
@@ -534,7 +534,7 @@ def control_card():
                                     className="neo-dropdown",
                                 ),
                             ],
-                            md=2,
+                            md=3,
                         ),
                         dbc.Col(
                             [
@@ -561,7 +561,7 @@ def control_card():
                                     className="neo-radio",
                                 ),
                             ],
-                            md=2,
+                            md=3,
                         ),
                         dbc.Col(
                             [
@@ -580,7 +580,7 @@ def control_card():
                                     className="neo-radio",
                                 ),
                             ],
-                            md=2,
+                            md=3,
                         ),
                         dbc.Col(
                             [
@@ -597,7 +597,7 @@ def control_card():
                                     className="neo-radio",
                                 ),
                             ],
-                            md=2,
+                            md=3,
                         ),
                     ]
                 ),
