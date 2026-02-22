@@ -4,7 +4,7 @@
     "position-filter",
     "opponent-filter",
     "round-filter",
-    "xaxis-group",
+    "axis-group",
   ];
 
   const COLORS = {
