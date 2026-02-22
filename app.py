@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 from dash import Dash, Input, Output, dcc, html
 from dotenv import load_dotenv
+from flask import send_from_directory
 from fantasy_ingest import (
     CONSISTENT_POINTS_EXCLUDED_STATS,
     get_default_db_path,
@@ -89,6 +90,44 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
         return series.fillna(False)
     normalized = series.astype(str).str.strip().str.lower()
     return normalized.isin({"1", "true", "t", "yes", "y"})
+
+
+def _infer_round_lookup(match_ids: pd.Series, fixtures_per_round: int = 3) -> dict[int, int]:
+    numeric_match_ids = pd.to_numeric(match_ids, errors="coerce").dropna().astype(int)
+    ordered_match_ids = sorted(pd.unique(numeric_match_ids))
+    if not ordered_match_ids:
+        return {}
+    matches_per_round = max(1, int(fixtures_per_round))
+    return {
+        int(match_id): (index // matches_per_round) + 1
+        for index, match_id in enumerate(ordered_match_ids)
+    }
+
+
+def _coerce_round_filter_values(rounds_sel) -> list[int]:
+    if rounds_sel is None:
+        return []
+    if isinstance(rounds_sel, (str, int, float)):
+        raw_values = [rounds_sel]
+    else:
+        raw_values = list(rounds_sel)
+
+    round_values: list[int] = []
+    for raw_round in raw_values:
+        try:
+            round_values.append(int(raw_round))
+        except (TypeError, ValueError):
+            continue
+    return sorted(set(round_values))
+
+
+def _build_filter_preview(options, max_items: int = 2, prefix: str = "All") -> str:
+    items = [str(item).strip() for item in options if str(item).strip()]
+    if not items:
+        return prefix
+    if len(items) <= max_items:
+        return ", ".join(items)
+    return f"{', '.join(items[:max_items])}..."
 
 
 def _build_name_opponent_label(name_series: pd.Series, opponent_series: pd.Series) -> pd.Series:
@@ -271,6 +310,17 @@ def load_latest_df() -> pd.DataFrame:
             opp_map = {teams[0]: teams[1], teams[1]: teams[0]}
             df["opponent"] = df["opponent"].fillna(df["team"].map(opp_map))
 
+    if "round" in df.columns:
+        df["round"] = pd.to_numeric(df["round"], errors="coerce").round().astype("Int64")
+    else:
+        df["round"] = pd.Series([pd.NA] * len(df), index=df.index, dtype="Int64")
+
+    if df["round"].isna().all() and "match_id" in df.columns:
+        inferred_round_lookup = _infer_round_lookup(df["match_id"])
+        if inferred_round_lookup:
+            match_ids_numeric = pd.to_numeric(df["match_id"], errors="coerce")
+            df["round"] = match_ids_numeric.map(inferred_round_lookup).astype("Int64")
+
     # Ensure numeric for points columns
     for c in df.columns:
         if c.endswith("_points") or c in (
@@ -381,7 +431,7 @@ def melt_points(df: pd.DataFrame, points_basis: str = "total") -> pd.DataFrame:
 
     id_cols = [
         c
-        for c in ["match_id", "id", "name", "team", "position", "opponent"]
+        for c in ["match_id", "id", "name", "team", "position", "opponent", "round"]
         if c in df.columns
     ]
     if not id_cols:
@@ -443,11 +493,31 @@ positions = sorted(df["position"].dropna().unique())
 opponents = (
     sorted(df["opponent"].dropna().unique()) if df["opponent"].notna().any() else []
 )
-players = sorted(df["name"].dropna().unique())
+rounds = (
+    sorted(int(r) for r in pd.unique(df["round"].dropna()))
+    if "round" in df.columns and df["round"].notna().any()
+    else []
+)
+team_preview = _build_filter_preview(teams)
+position_preview = _build_filter_preview(positions)
+opponent_preview = _build_filter_preview(opponents, prefix="All opponents")
+round_preview = _build_filter_preview(
+    [f"Round {r}" for r in rounds], prefix="All rounds"
+)
 
 external_stylesheets = [dbc.themes.DARKLY]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Six Nations Fantasy – Scoring Explorer"
+
+
+@app.server.route("/favicon.ico")
+def favicon():
+    assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+    return send_from_directory(
+        assets_dir,
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
 
 
 def control_card():
@@ -463,25 +533,9 @@ def control_card():
                                 dcc.Dropdown(
                                     id="team-filter",
                                     options=[{"label": t, "value": t} for t in teams],
-                                    value=teams,
+                                    value=[],
                                     multi=True,
-                                    placeholder="Select team(s)",
-                                    className="neo-dropdown",
-                                ),
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dbc.Label("Position"),
-                                dcc.Dropdown(
-                                    id="position-filter",
-                                    options=[
-                                        {"label": p, "value": p} for p in positions
-                                    ],
-                                    value=positions,
-                                    multi=True,
-                                    placeholder="Select position(s)",
+                                    placeholder=team_preview,
                                     className="neo-dropdown",
                                 ),
                             ],
@@ -495,9 +549,9 @@ def control_card():
                                     options=[
                                         {"label": o, "value": o} for o in opponents
                                     ],
-                                    value=opponents if opponents else None,
+                                    value=[],
                                     multi=True,
-                                    placeholder="Select opponent(s)",
+                                    placeholder=opponent_preview,
                                     disabled=(len(opponents) == 0),
                                     className="neo-dropdown",
                                 ),
@@ -506,13 +560,33 @@ def control_card():
                         ),
                         dbc.Col(
                             [
-                                dbc.Label("Players"),
+                                dbc.Label("Position"),
                                 dcc.Dropdown(
-                                    id="player-filter",
-                                    options=[{"label": n, "value": n} for n in players],
+                                    id="position-filter",
+                                    options=[
+                                        {"label": p, "value": p} for p in positions
+                                    ],
                                     value=[],
                                     multi=True,
-                                    placeholder="Filter by player(s) (optional)",
+                                    placeholder=position_preview,
+                                    className="neo-dropdown",
+                                ),
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Label("Round"),
+                                dcc.Dropdown(
+                                    id="round-filter",
+                                    options=[
+                                        {"label": f"Round {r}", "value": r}
+                                        for r in rounds
+                                    ],
+                                    value=[],
+                                    multi=True,
+                                    placeholder=round_preview,
+                                    disabled=(len(rounds) == 0),
                                     className="neo-dropdown",
                                 ),
                             ],
@@ -526,32 +600,6 @@ def control_card():
                     [
                         dbc.Col(
                             [
-                                dbc.Label("X Axis"),
-                                dcc.Dropdown(
-                                    id="xaxis-group",
-                                    options=[
-                                        {"label": "Player", "value": "name"},
-                                        {
-                                            "label": "Player vs Opponent",
-                                            "value": "name_opponent",
-                                        },
-                                        {
-                                            "label": "Position vs Opponent",
-                                            "value": "position_opponent",
-                                        },
-                                        {"label": "Position", "value": "position"},
-                                        {"label": "Team", "value": "team"},
-                                        {"label": "Opponent", "value": "opponent"},
-                                    ],
-                                    value="name",
-                                    clearable=False,
-                                    className="neo-dropdown",
-                                ),
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
                                 dbc.Label("Stack Metric"),
                                 dcc.RadioItems(
                                     id="metric-mode",
@@ -563,7 +611,12 @@ def control_card():
                                     inline=True,
                                     className="neo-radio",
                                 ),
-                                dbc.Label("Aggregation", className="mt-2"),
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Label("Aggregation"),
                                 dcc.RadioItems(
                                     id="aggregate-mode",
                                     options=[
@@ -647,6 +700,46 @@ app.layout = dbc.Container(
                             [
                                 html.H5("Breakdown", className="card-title"),
                                 dcc.Graph(id="stacked-bar", className="neo-graph"),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Label("X Axis", className="mt-2"),
+                                                dcc.Dropdown(
+                                                    id="xaxis-group",
+                                                    options=[
+                                                        {
+                                                            "label": "Player",
+                                                            "value": "name",
+                                                        },
+                                                        {
+                                                            "label": "Player vs Opponent",
+                                                            "value": "name_opponent",
+                                                        },
+                                                        {
+                                                            "label": "Position vs Opponent",
+                                                            "value": "position_opponent",
+                                                        },
+                                                        {
+                                                            "label": "Position",
+                                                            "value": "position",
+                                                        },
+                                                        {"label": "Team", "value": "team"},
+                                                        {
+                                                            "label": "Opponent",
+                                                            "value": "opponent",
+                                                        },
+                                                    ],
+                                                    value="name",
+                                                    clearable=False,
+                                                    className="neo-dropdown",
+                                                ),
+                                            ],
+                                            md=3,
+                                        ),
+                                    ],
+                                    justify="center",
+                                ),
                             ]
                         ),
                         className="panel",
@@ -696,7 +789,7 @@ def _apply_filters(
     teams_sel,
     positions_sel,
     opp_sel,
-    players_sel,
+    rounds_sel,
     player_type_mode: str,
 ):
     dff = df_in.copy()
@@ -724,8 +817,9 @@ def _apply_filters(
         dff = dff[dff["position"].isin(positions_sel)]
     if opp_sel and "opponent" in dff.columns:
         dff = dff[dff["opponent"].isin(opp_sel)]
-    if players_sel:
-        dff = dff[dff["name"].isin(players_sel)]
+    round_values = _coerce_round_filter_values(rounds_sel)
+    if round_values and "round" in dff.columns:
+        dff = dff[dff["round"].isin(round_values)]
     return dff
 
 
@@ -734,7 +828,7 @@ def _apply_filters(
     Input("team-filter", "value"),
     Input("position-filter", "value"),
     Input("opponent-filter", "value"),
-    Input("player-filter", "value"),
+    Input("round-filter", "value"),
     Input("xaxis-group", "value"),
     Input("metric-mode", "value"),
     Input("aggregate-mode", "value"),
@@ -745,7 +839,7 @@ def refresh(
     teams_sel,
     positions_sel,
     opp_sel,
-    players_sel,
+    rounds_sel,
     xaxis_group,
     metric_mode,
     aggregate_mode,
@@ -758,7 +852,7 @@ def refresh(
         teams_sel,
         positions_sel,
         opp_sel,
-        players_sel,
+        rounds_sel,
         player_type_mode,
     )
     longf = melt_points(dff, points_basis=points_basis)
@@ -991,7 +1085,7 @@ def refresh(
         )
     fig_bar.update_layout(
         legend_title_text="",
-        xaxis_title=label_map.get(xaxis_group, "Player"),
+        xaxis_title=None,
         # Reduce top margin and add space at the bottom to place legend below the chart
         margin=dict(l=20, r=20, t=60, b=140),
         template="plotly_dark",
@@ -1026,6 +1120,7 @@ def refresh(
         },
     )
     fig_bar.update_xaxes(
+        title_text=None,
         tickfont={"size": 12},
         gridcolor="#1f2937",
         zerolinecolor="#1f2937",

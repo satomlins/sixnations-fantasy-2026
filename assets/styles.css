@@ -208,6 +208,57 @@ h5,
   color: var(--sn-white) !important;
 }
 
+/* Keep multi-select summary text (e.g. "N selected") legible on dark controls. */
+.neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper,
+.neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper *,
+.neo-dropdown .Select--multi.has-value .Select-value-label,
+.neo-dropdown .Select--multi.has-value .Select-value,
+.neo-dropdown .Select.has-value .Select-value-label,
+.neo-dropdown .Select.has-value .Select-value,
+.neo-dropdown [class*="-valueContainer"],
+.neo-dropdown [class*="-valueContainer"] *,
+.neo-dropdown [class*="-multiValueLabel"] {
+  color: var(--sn-white) !important;
+  -webkit-text-fill-color: var(--sn-white) !important;
+  opacity: 1 !important;
+}
+
+.neo-dropdown .Select.has-value .Select-control *,
+.neo-dropdown .Select.has-value .Select__control *,
+.neo-dropdown .Select--multi.has-value .Select-control *,
+.neo-dropdown .Select--multi.has-value .Select__control * {
+  color: var(--sn-white) !important;
+  -webkit-text-fill-color: var(--sn-white) !important;
+  opacity: 1 !important;
+}
+
+/* Last-resort control text override for Dash's dynamic "N selected" rendering. */
+#team-filter *,
+#position-filter *,
+#opponent-filter *,
+#round-filter *,
+#xaxis-group * {
+  color: var(--sn-white) !important;
+  -webkit-text-fill-color: var(--sn-white) !important;
+}
+
+#team-filter .Select-placeholder,
+#position-filter .Select-placeholder,
+#opponent-filter .Select-placeholder,
+#round-filter .Select-placeholder,
+#team-filter .Select__placeholder,
+#position-filter .Select__placeholder,
+#opponent-filter .Select__placeholder,
+#round-filter .Select__placeholder {
+  color: #c8d8f4 !important;
+  -webkit-text-fill-color: #c8d8f4 !important;
+}
+
+/* Hide Dash's multi-select "N selected" badge text/pill. */
+.neo-dropdown .dash-dropdown-value-count {
+  display: none !important;
+}
+
 .neo-dropdown .Select-arrow,
 .neo-dropdown .Select__dropdown-indicator,
 .neo-dropdown [class*="-indicator"] {

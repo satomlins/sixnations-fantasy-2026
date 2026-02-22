@@ -443,6 +443,27 @@ def _build_starter_history_lookup(
     return lookup
 
 
+def _infer_round_map_from_match_ids(
+    match_ids: Iterable[Any], fixtures_per_round: int = 3
+) -> dict[int, int]:
+    parsed_match_ids: list[int] = []
+    for match_id in match_ids:
+        try:
+            parsed_match_ids.append(int(match_id))
+        except (TypeError, ValueError):
+            continue
+
+    unique_match_ids = sorted(set(parsed_match_ids))
+    if not unique_match_ids:
+        return {}
+
+    matches_per_round = max(1, int(fixtures_per_round))
+    return {
+        match_id: (index // matches_per_round) + 1
+        for index, match_id in enumerate(unique_match_ids)
+    }
+
+
 def annotate_starter_status(
     df: pd.DataFrame,
     language: str = "en",
@@ -454,6 +475,7 @@ def annotate_starter_status(
 
     if df.empty:
         df = df.copy()
+        df["round"] = pd.Series(dtype="Int64")
         df["starter_status"] = pd.Series(dtype="object")
         df["is_starter"] = pd.Series(dtype="boolean")
         df["is_substitute"] = pd.Series(dtype="boolean")
@@ -468,11 +490,14 @@ def annotate_starter_status(
         if verbose:
             print(msg)
         out = df.copy()
+        out["round"] = pd.Series([pd.NA] * len(out), index=out.index, dtype="Int64")
         out["starter_status"] = pd.NA
         out["is_starter"] = pd.array([pd.NA] * len(out), dtype="boolean")
         out["is_substitute"] = pd.array([pd.NA] * len(out), dtype="boolean")
         out["position_fixture"] = out.get("position", pd.Series(dtype="object"))
         return out, notices
+
+    inferred_round_by_match_id = _infer_round_map_from_match_ids(df["match_id"])
 
     session = _build_session()
     try:
@@ -510,6 +535,13 @@ def annotate_starter_status(
         if verbose:
             print(msg)
         out = df.copy()
+        if inferred_round_by_match_id:
+            numeric_match_ids = pd.to_numeric(out["match_id"], errors="coerce")
+            out["round"] = numeric_match_ids.map(inferred_round_by_match_id).astype(
+                "Int64"
+            )
+        else:
+            out["round"] = pd.Series([pd.NA] * len(out), index=out.index, dtype="Int64")
         out["starter_status"] = pd.NA
         out["is_starter"] = pd.array([pd.NA] * len(out), dtype="boolean")
         out["is_substitute"] = pd.array([pd.NA] * len(out), dtype="boolean")
@@ -519,6 +551,7 @@ def annotate_starter_status(
         session.close()
 
     out = df.copy()
+    round_numbers: list[Optional[int]] = []
     starter_statuses: list[Optional[str]] = []
 
     for match_id, player_name, team_name in zip(
@@ -527,10 +560,14 @@ def annotate_starter_status(
         try:
             match_id_int = int(match_id)
         except (TypeError, ValueError):
+            round_numbers.append(None)
             starter_statuses.append(None)
             continue
 
         round_number = round_by_match_id.get(match_id_int)
+        if round_number is None:
+            round_number = inferred_round_by_match_id.get(match_id_int)
+        round_numbers.append(int(round_number) if round_number is not None else None)
         if round_number is None:
             starter_statuses.append(None)
             continue
@@ -542,6 +579,7 @@ def annotate_starter_status(
         player_history = starter_lookup.get(player_key) or {}
         starter_statuses.append(player_history.get(int(round_number)))
 
+    out["round"] = pd.array(round_numbers, dtype="Int64")
     out["starter_status"] = pd.Series(starter_statuses, index=out.index, dtype="object")
     out["is_starter"] = pd.array(
         [_decode_starter_flag(code) for code in starter_statuses],
