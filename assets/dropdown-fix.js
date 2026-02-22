@@ -3,8 +3,8 @@
     "team-filter",
     "position-filter",
     "opponent-filter",
-    "player-filter",
-    "xaxis-group",
+    "round-filter",
+    "axis-group",
   ];
 
   const COLORS = {
@@ -26,6 +26,15 @@
       el.style.backgroundColor = COLORS.controlBg;
       el.style.color = COLORS.text;
       el.style.borderColor = COLORS.controlBorder;
+    });
+
+    const controlDescendants = root.querySelectorAll(
+      ".Select-control *, .Select__control *, [class*='-control'] *"
+    );
+    controlDescendants.forEach((el) => {
+      el.style.color = COLORS.text;
+      el.style.webkitTextFillColor = COLORS.text;
+      el.style.opacity = "1";
     });
 
     const placeholders = root.querySelectorAll(
@@ -57,6 +66,24 @@
     chips.forEach((el) => {
       el.style.backgroundColor = COLORS.chipBg;
       el.style.border = `1px solid ${COLORS.chipBorder}`;
+    });
+
+    const valueContainers = root.querySelectorAll(
+      ".Select-multi-value-wrapper, .Select__value-container, [class*='valueContainer']"
+    );
+    valueContainers.forEach((el) => {
+      el.style.color = COLORS.text;
+      el.style.webkitTextFillColor = COLORS.text;
+      el.style.opacity = "1";
+    });
+
+    const summaryLabels = root.querySelectorAll(
+      ".Select-value-label, .Select-multi-value-wrapper span, [class*='multiValueLabel']"
+    );
+    summaryLabels.forEach((el) => {
+      el.style.color = COLORS.text;
+      el.style.webkitTextFillColor = COLORS.text;
+      el.style.opacity = "1";
     });
   }
 

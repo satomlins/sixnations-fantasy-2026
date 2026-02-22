@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 from dash import Dash, Input, Output, dcc, html
 from dotenv import load_dotenv
+from flask import request, send_from_directory
 from fantasy_ingest import (
     CONSISTENT_POINTS_EXCLUDED_STATS,
     get_default_db_path,
@@ -82,6 +83,15 @@ STAT_COLOR_MAP = {
     STAT_LABEL_MAP["YellowCard"]: "#FFD166",
     STAT_LABEL_MAP["RedCard"]: "#D00000",
 }
+MOBILE_UA_MARKERS = (
+    "mobi",
+    "iphone",
+    "ipad",
+    "android",
+    "ipod",
+    "windows phone",
+    "opera mini",
+)
 
 
 def _coerce_bool_series(series: pd.Series) -> pd.Series:
@@ -89,6 +99,54 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
         return series.fillna(False)
     normalized = series.astype(str).str.strip().str.lower()
     return normalized.isin({"1", "true", "t", "yes", "y"})
+
+
+def _is_mobile_request() -> bool:
+    try:
+        user_agent = request.headers.get("User-Agent", "").lower()
+    except RuntimeError:
+        return False
+    if not user_agent:
+        return False
+    return any(marker in user_agent for marker in MOBILE_UA_MARKERS)
+
+
+def _infer_round_lookup(match_ids: pd.Series, fixtures_per_round: int = 3) -> dict[int, int]:
+    numeric_match_ids = pd.to_numeric(match_ids, errors="coerce").dropna().astype(int)
+    ordered_match_ids = sorted(pd.unique(numeric_match_ids))
+    if not ordered_match_ids:
+        return {}
+    matches_per_round = max(1, int(fixtures_per_round))
+    return {
+        int(match_id): (index // matches_per_round) + 1
+        for index, match_id in enumerate(ordered_match_ids)
+    }
+
+
+def _coerce_round_filter_values(rounds_sel) -> list[int]:
+    if rounds_sel is None:
+        return []
+    if isinstance(rounds_sel, (str, int, float)):
+        raw_values = [rounds_sel]
+    else:
+        raw_values = list(rounds_sel)
+
+    round_values: list[int] = []
+    for raw_round in raw_values:
+        try:
+            round_values.append(int(raw_round))
+        except (TypeError, ValueError):
+            continue
+    return sorted(set(round_values))
+
+
+def _build_filter_preview(options, max_items: int = 2, prefix: str = "All") -> str:
+    items = [str(item).strip() for item in options if str(item).strip()]
+    if not items:
+        return prefix
+    if len(items) <= max_items:
+        return ", ".join(items)
+    return f"{', '.join(items[:max_items])}..."
 
 
 def _build_name_opponent_label(name_series: pd.Series, opponent_series: pd.Series) -> pd.Series:
@@ -271,6 +329,17 @@ def load_latest_df() -> pd.DataFrame:
             opp_map = {teams[0]: teams[1], teams[1]: teams[0]}
             df["opponent"] = df["opponent"].fillna(df["team"].map(opp_map))
 
+    if "round" in df.columns:
+        df["round"] = pd.to_numeric(df["round"], errors="coerce").round().astype("Int64")
+    else:
+        df["round"] = pd.Series([pd.NA] * len(df), index=df.index, dtype="Int64")
+
+    if df["round"].isna().all() and "match_id" in df.columns:
+        inferred_round_lookup = _infer_round_lookup(df["match_id"])
+        if inferred_round_lookup:
+            match_ids_numeric = pd.to_numeric(df["match_id"], errors="coerce")
+            df["round"] = match_ids_numeric.map(inferred_round_lookup).astype("Int64")
+
     # Ensure numeric for points columns
     for c in df.columns:
         if c.endswith("_points") or c in (
@@ -381,7 +450,7 @@ def melt_points(df: pd.DataFrame, points_basis: str = "total") -> pd.DataFrame:
 
     id_cols = [
         c
-        for c in ["match_id", "id", "name", "team", "position", "opponent"]
+        for c in ["match_id", "id", "name", "team", "position", "opponent", "round"]
         if c in df.columns
     ]
     if not id_cols:
@@ -443,11 +512,40 @@ positions = sorted(df["position"].dropna().unique())
 opponents = (
     sorted(df["opponent"].dropna().unique()) if df["opponent"].notna().any() else []
 )
-players = sorted(df["name"].dropna().unique())
+rounds = (
+    sorted(int(r) for r in pd.unique(df["round"].dropna()))
+    if "round" in df.columns and df["round"].notna().any()
+    else []
+)
+team_preview = _build_filter_preview(teams)
+position_preview = _build_filter_preview(positions)
+opponent_preview = _build_filter_preview(opponents, prefix="All opponents")
+round_preview = _build_filter_preview(
+    [f"Round {r}" for r in rounds], prefix="All rounds"
+)
 
 external_stylesheets = [dbc.themes.DARKLY]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(
+    __name__,
+    external_stylesheets=external_stylesheets,
+    meta_tags=[
+        {
+            "name": "viewport",
+            "content": "width=device-width, initial-scale=1, viewport-fit=cover",
+        }
+    ],
+)
 app.title = "Six Nations Fantasy – Scoring Explorer"
+
+
+@app.server.route("/favicon.ico")
+def favicon():
+    assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+    return send_from_directory(
+        assets_dir,
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
 
 
 def control_card():
@@ -463,25 +561,9 @@ def control_card():
                                 dcc.Dropdown(
                                     id="team-filter",
                                     options=[{"label": t, "value": t} for t in teams],
-                                    value=teams,
+                                    value=[],
                                     multi=True,
-                                    placeholder="Select team(s)",
-                                    className="neo-dropdown",
-                                ),
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dbc.Label("Position"),
-                                dcc.Dropdown(
-                                    id="position-filter",
-                                    options=[
-                                        {"label": p, "value": p} for p in positions
-                                    ],
-                                    value=positions,
-                                    multi=True,
-                                    placeholder="Select position(s)",
+                                    placeholder=team_preview,
                                     className="neo-dropdown",
                                 ),
                             ],
@@ -495,9 +577,9 @@ def control_card():
                                     options=[
                                         {"label": o, "value": o} for o in opponents
                                     ],
-                                    value=opponents if opponents else None,
+                                    value=[],
                                     multi=True,
-                                    placeholder="Select opponent(s)",
+                                    placeholder=opponent_preview,
                                     disabled=(len(opponents) == 0),
                                     className="neo-dropdown",
                                 ),
@@ -506,13 +588,33 @@ def control_card():
                         ),
                         dbc.Col(
                             [
-                                dbc.Label("Players"),
+                                dbc.Label("Position"),
                                 dcc.Dropdown(
-                                    id="player-filter",
-                                    options=[{"label": n, "value": n} for n in players],
+                                    id="position-filter",
+                                    options=[
+                                        {"label": p, "value": p} for p in positions
+                                    ],
                                     value=[],
                                     multi=True,
-                                    placeholder="Filter by player(s) (optional)",
+                                    placeholder=position_preview,
+                                    className="neo-dropdown",
+                                ),
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Label("Round"),
+                                dcc.Dropdown(
+                                    id="round-filter",
+                                    options=[
+                                        {"label": f"Round {r}", "value": r}
+                                        for r in rounds
+                                    ],
+                                    value=[],
+                                    multi=True,
+                                    placeholder=round_preview,
+                                    disabled=(len(rounds) == 0),
                                     className="neo-dropdown",
                                 ),
                             ],
@@ -526,32 +628,6 @@ def control_card():
                     [
                         dbc.Col(
                             [
-                                dbc.Label("X Axis"),
-                                dcc.Dropdown(
-                                    id="xaxis-group",
-                                    options=[
-                                        {"label": "Player", "value": "name"},
-                                        {
-                                            "label": "Player vs Opponent",
-                                            "value": "name_opponent",
-                                        },
-                                        {
-                                            "label": "Position vs Opponent",
-                                            "value": "position_opponent",
-                                        },
-                                        {"label": "Position", "value": "position"},
-                                        {"label": "Team", "value": "team"},
-                                        {"label": "Opponent", "value": "opponent"},
-                                    ],
-                                    value="name",
-                                    clearable=False,
-                                    className="neo-dropdown",
-                                ),
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
                                 dbc.Label("Stack Metric"),
                                 dcc.RadioItems(
                                     id="metric-mode",
@@ -563,7 +639,12 @@ def control_card():
                                     inline=True,
                                     className="neo-radio",
                                 ),
-                                dbc.Label("Aggregation", className="mt-2"),
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Label("Aggregation"),
                                 dcc.RadioItems(
                                     id="aggregate-mode",
                                     options=[
@@ -647,6 +728,50 @@ app.layout = dbc.Container(
                             [
                                 html.H5("Breakdown", className="card-title"),
                                 dcc.Graph(id="stacked-bar", className="neo-graph"),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Label(
+                                                    "X Axis",
+                                                    id="axis-group-label",
+                                                    className="mt-2",
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="axis-group",
+                                                    options=[
+                                                        {
+                                                            "label": "Player",
+                                                            "value": "name",
+                                                        },
+                                                        {
+                                                            "label": "Player vs Opponent",
+                                                            "value": "name_opponent",
+                                                        },
+                                                        {
+                                                            "label": "Position vs Opponent",
+                                                            "value": "position_opponent",
+                                                        },
+                                                        {
+                                                            "label": "Position",
+                                                            "value": "position",
+                                                        },
+                                                        {"label": "Team", "value": "team"},
+                                                        {
+                                                            "label": "Opponent",
+                                                            "value": "opponent",
+                                                        },
+                                                    ],
+                                                    value="name",
+                                                    clearable=False,
+                                                    className="neo-dropdown",
+                                                ),
+                                            ],
+                                            md=3,
+                                        ),
+                                    ],
+                                    justify="center",
+                                ),
                             ]
                         ),
                         className="panel",
@@ -659,28 +784,84 @@ app.layout = dbc.Container(
         html.Footer(
             [
                 html.Div(
-                    f"\u00a9 {FOOTER_YEAR} Scott Tomlins",
-                    className="footer-copy",
-                ),
-                html.Div(
                     f"Data Last Updated: {LAST_PULLED_LABEL}",
                     className="footer-pulled",
                 ),
-                html.A(
+                html.Div(
                     [
-                        html.Img(
-                            src="/assets/favicon-32x32.png",
-                            className="linkedin-logo-img",
-                            alt="",
-                            **{"aria-hidden": "true"},
+                        html.Div(
+                            [
+                                html.A(
+                                    [
+                                        html.Img(
+                                            src="/assets/mail-icon.svg",
+                                            className="footer-icon-img",
+                                            alt="",
+                                            **{"aria-hidden": "true"},
+                                        ),
+                                        html.Span("Email", className="footer-sr"),
+                                    ],
+                                    href="mailto:fantasy6n@stomlins.com",
+                                    className="footer-link",
+                                    title="Email fantasy6n@stomlins.com",
+                                ),
+                                html.A(
+                                    [
+                                        html.Img(
+                                            src="/assets/linkedin-icon.svg",
+                                            className="footer-icon-img",
+                                            alt="",
+                                            **{"aria-hidden": "true"},
+                                        ),
+                                        html.Span("LinkedIn", className="footer-sr"),
+                                    ],
+                                    href="https://linkedin.stomlins.com",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    className="footer-link",
+                                    title="Scott Tomlins on LinkedIn",
+                                ),
+                                html.A(
+                                    [
+                                        html.Img(
+                                            src="/assets/github-icon.svg",
+                                            className="footer-icon-img",
+                                            alt="",
+                                            **{"aria-hidden": "true"},
+                                        ),
+                                        html.Span("GitHub", className="footer-sr"),
+                                    ],
+                                    href="https://github.com/satomlins/",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    className="footer-link",
+                                    title="Scott Tomlins on GitHub",
+                                ),
+                                html.A(
+                                    [
+                                        html.Img(
+                                            src="/assets/medium-icon.svg",
+                                            className="footer-icon-img",
+                                            alt="",
+                                            **{"aria-hidden": "true"},
+                                        ),
+                                        html.Span("Medium", className="footer-sr"),
+                                    ],
+                                    href="https://stomlins.medium.com/",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    className="footer-link",
+                                    title="Scott Tomlins on Medium",
+                                ),
+                            ],
+                            className="footer-actions",
                         ),
-                        html.Span("Fantasy6N", className="footer-sr"),
+                        html.Div(
+                            f"\u00a9 {FOOTER_YEAR} Scott Tomlins | website by Scott Tomlins",
+                            className="footer-copy",
+                        ),
                     ],
-                    href="https://fantasy6n.stomlins.com",
-                    target="_blank",
-                    rel="noopener noreferrer",
-                    className="footer-linkedin",
-                    title="Fantasy 6N",
+                    className="footer-center-stack",
                 ),
             ],
             className="app-footer",
@@ -696,7 +877,7 @@ def _apply_filters(
     teams_sel,
     positions_sel,
     opp_sel,
-    players_sel,
+    rounds_sel,
     player_type_mode: str,
 ):
     dff = df_in.copy()
@@ -724,18 +905,20 @@ def _apply_filters(
         dff = dff[dff["position"].isin(positions_sel)]
     if opp_sel and "opponent" in dff.columns:
         dff = dff[dff["opponent"].isin(opp_sel)]
-    if players_sel:
-        dff = dff[dff["name"].isin(players_sel)]
+    round_values = _coerce_round_filter_values(rounds_sel)
+    if round_values and "round" in dff.columns:
+        dff = dff[dff["round"].isin(round_values)]
     return dff
 
 
 @app.callback(
     Output("stacked-bar", "figure"),
+    Output("axis-group-label", "children"),
     Input("team-filter", "value"),
     Input("position-filter", "value"),
     Input("opponent-filter", "value"),
-    Input("player-filter", "value"),
-    Input("xaxis-group", "value"),
+    Input("round-filter", "value"),
+    Input("axis-group", "value"),
     Input("metric-mode", "value"),
     Input("aggregate-mode", "value"),
     Input("points-basis", "value"),
@@ -745,36 +928,50 @@ def refresh(
     teams_sel,
     positions_sel,
     opp_sel,
-    players_sel,
-    xaxis_group,
+    rounds_sel,
+    axis_group,
     metric_mode,
     aggregate_mode,
     points_basis,
     player_type_mode,
 ):
+    is_mobile = _is_mobile_request()
+    axis_selector_label = "Y Axis" if is_mobile else "X Axis"
+
     # Apply filters and create long form for plotting
     dff = _apply_filters(
         df,
         teams_sel,
         positions_sel,
         opp_sel,
-        players_sel,
+        rounds_sel,
         player_type_mode,
     )
     longf = melt_points(dff, points_basis=points_basis)
 
     # Guard empty data
     if longf.empty:
-        empty_fig = px.bar(title="No data for current filters")
+        empty_fig = px.bar()
+        empty_fig.add_annotation(
+            text="No data for current filters",
+            x=0.5,
+            y=0.5,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font={"size": 16},
+        )
         empty_fig.update_layout(
             template="plotly_dark",
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
         )
-        return empty_fig
+        empty_fig.update_xaxes(visible=False)
+        empty_fig.update_yaxes(visible=False)
+        return empty_fig, axis_selector_label
 
-    # Validate x-axis group
-    valid_xaxis_groups = {
+    # Validate selected grouping axis.
+    valid_axis_groups = {
         "name",
         "name_opponent",
         "position_opponent",
@@ -782,11 +979,11 @@ def refresh(
         "team",
         "opponent",
     }
-    if xaxis_group not in valid_xaxis_groups:
-        xaxis_group = "name"
+    if axis_group not in valid_axis_groups:
+        axis_group = "name"
 
     # Optional combined grouping for single-fixture style comparisons.
-    if xaxis_group == "name_opponent":
+    if axis_group == "name_opponent":
         dff = dff.copy()
         longf = longf.copy()
         dff["name_opponent"] = _build_name_opponent_label(
@@ -805,7 +1002,7 @@ def refresh(
             if "opponent" in longf.columns
             else pd.Series([pd.NA] * len(longf), index=longf.index),
         )
-    elif xaxis_group == "position_opponent":
+    elif axis_group == "position_opponent":
         dff = dff.copy()
         longf = longf.copy()
         dff["position_opponent"] = _build_position_opponent_label(
@@ -831,37 +1028,36 @@ def refresh(
     agg_fn = "mean" if aggregate_mode == "average" else "sum"
 
     # Aggregate to group level
-    dlong = longf.dropna(subset=[xaxis_group]).copy()
-    agg = dlong.groupby([xaxis_group, "stat"], as_index=False).agg(
+    dlong = longf.dropna(subset=[axis_group]).copy()
+    agg = dlong.groupby([axis_group, "stat"], as_index=False).agg(
         points=("points", agg_fn), value=("value", agg_fn)
     )
     totals_by_group = (
-        agg.groupby(xaxis_group, as_index=False)["points"]
+        agg.groupby(axis_group, as_index=False)["points"]
         .sum()
         .rename(columns={"points": "group_total"})
     )
-    agg = agg.merge(totals_by_group, on=xaxis_group, how="left")
+    agg = agg.merge(totals_by_group, on=axis_group, how="left")
     agg["pct"] = (agg["points"] / agg["group_total"].replace(0, pd.NA)) * 100
     agg["pct"] = agg["pct"].fillna(0.0)
 
-    # Order groups by total points desc
-    order = totals_by_group.sort_values("group_total", ascending=False)[
-        xaxis_group
-    ].tolist()
+    # Order groups by total points desc.
+    order = totals_by_group.sort_values("group_total", ascending=False)[axis_group].tolist()
+    height_reference_rows = min(len(order), 30)
 
-    # Keep the chart readable for dense x-axis groupings.
-    if xaxis_group in {"name", "name_opponent", "position_opponent"} and len(order) > 30:
-        order = order[:30]
-        agg = agg[agg[xaxis_group].isin(order)].copy()
+    # Show fewer rows on mobile for readability/performance.
+    max_groups = 20 if is_mobile else 30
+    if len(order) > max_groups:
+        order = order[:max_groups]
+        agg = agg[agg[axis_group].isin(order)].copy()
 
-    agg[xaxis_group] = pd.Categorical(agg[xaxis_group], categories=order, ordered=True)
+    agg[axis_group] = pd.Categorical(agg[axis_group], categories=order, ordered=True)
 
-    # If grouping by player name, attach the player's country/team for hover info
+    # If grouping by player name, attach the player's country/team for hover info.
     team_label_present = False
     team_for_name_map = None
-    if xaxis_group == "name":
+    if axis_group == "name":
         try:
-            # Use the most frequent team per name across the filtered data
             mode_team = (
                 dff[["name", "team"]]
                 .dropna()
@@ -869,12 +1065,12 @@ def refresh(
                 .agg(lambda s: s.mode().iat[0] if not s.mode().empty else s.iloc[0])
             )
             team_for_name_map = mode_team.to_dict()
-            agg["team_label"] = agg[xaxis_group].astype(str).map(team_for_name_map)
+            agg["team_label"] = agg[axis_group].astype(str).map(team_for_name_map)
             team_label_present = True
         except Exception:
             team_label_present = False
 
-    # Friendly labels for stats and axes
+    # Friendly labels for stats and axes.
     agg["stat_label"] = agg["stat"].map(STAT_LABEL_MAP).fillna(agg["stat"])
     label_map = {
         "name": "Player",
@@ -885,16 +1081,10 @@ def refresh(
         "opponent": "Opponent",
     }
 
-    # Build stacked bar figure
     y_col = "pct" if metric_mode == "pct" else "points"
     points_basis_label = "Consistent Points" if points_basis == "consistent" else "Points"
     aggregation_label = "Average" if aggregate_mode == "average" else "Total"
     points_category_title = f"{aggregation_label} {points_basis_label}"
-    bar_title = (
-        f"% Contribution by Stat ({points_category_title})"
-        if metric_mode == "pct"
-        else f"{points_category_title} by Stat"
-    ) + f" by {label_map.get(xaxis_group, 'Player')}"
 
     # Keep a stable legend/stack order so colors never reshuffle across filters.
     present_stat_labels = set(agg["stat_label"].dropna().astype(str))
@@ -909,135 +1099,224 @@ def refresh(
             idx % len(px.colors.qualitative.Dark24)
         ]
 
-    fig_bar = px.bar(
-        agg,
-        x=xaxis_group,
-        y=y_col,
-        color="stat_label",
-        custom_data=["stat_label", "points", "value"]
-        + (["team_label"] if team_label_present else []),
-        title=bar_title,
-        color_discrete_map=color_discrete_map,
-        category_orders={xaxis_group: order, "stat_label": stat_order},
+    custom_data = ["stat_label", "points", "value"] + (
+        ["team_label"] if team_label_present else []
     )
     points_hover_label = "Avg Points" if aggregate_mode == "average" else "Points"
     value_hover_label = "Avg Value" if aggregate_mode == "average" else "Value"
     value_hover_fmt = ".1f" if aggregate_mode == "average" else ".0f"
-    hover_tmpl = (
-        f"{label_map.get(xaxis_group, 'Player')}: %{{x}}<br>"
-        "Stat: %{customdata[0]}<br>"
-        f"{points_hover_label}: %{{customdata[1]:.1f}}<br>"
-    )
-    if metric_mode == "pct":
-        hover_tmpl += "%: %{y:.1f}<br>"
-    if team_label_present:
-        hover_tmpl += "Team: %{customdata[3]}<br>"
-    hover_tmpl += f"{value_hover_label}: %{{customdata[2]:{value_hover_fmt}}}<extra></extra>"
-    fig_bar.update_traces(hovertemplate=hover_tmpl)
-    # Ensure x-axis categories are ordered by total size (desc), not alphabetically
-    fig_bar.update_xaxes(categoryorder="array", categoryarray=order)
-    if metric_mode == "pct":
-        fig_bar.update_yaxes(title_text="% of Group Total", range=[0, 100])
-    else:
-        fig_bar.update_yaxes(title_text=points_category_title)
 
-    # Overlay Minutes as a secondary-axis scatter (dots), showing average minutes per group (max 80)
+    if is_mobile:
+        fig_bar = px.bar(
+            agg,
+            x=y_col,
+            y=axis_group,
+            color="stat_label",
+            orientation="h",
+            custom_data=custom_data,
+            color_discrete_map=color_discrete_map,
+            category_orders={axis_group: order, "stat_label": stat_order},
+        )
+        hover_tmpl = (
+            f"{label_map.get(axis_group, 'Player')}: %{{y}}<br>"
+            "Stat: %{customdata[0]}<br>"
+            f"{points_hover_label}: %{{customdata[1]:.1f}}<br>"
+        )
+        if metric_mode == "pct":
+            hover_tmpl += "%: %{x:.1f}<br>"
+        if team_label_present:
+            hover_tmpl += "Team: %{customdata[3]}<br>"
+        hover_tmpl += (
+            f"{value_hover_label}: %{{customdata[2]:{value_hover_fmt}}}<extra></extra>"
+        )
+        fig_bar.update_traces(hovertemplate=hover_tmpl)
+
+        # For horizontal bars, reverse category draw order so largest appears at the top.
+        order_top_first = list(order)[::-1]
+        fig_bar.update_yaxes(
+            categoryorder="array",
+            categoryarray=order_top_first,
+            tickmode="array",
+            tickvals=order_top_first,
+            ticktext=order_top_first,
+            title_text=None,
+        )
+        if metric_mode == "pct":
+            fig_bar.update_xaxes(title_text="% of Group Total", range=[0, 100])
+        else:
+            fig_bar.update_xaxes(title_text=points_category_title)
+    else:
+        fig_bar = px.bar(
+            agg,
+            x=axis_group,
+            y=y_col,
+            color="stat_label",
+            custom_data=custom_data,
+            color_discrete_map=color_discrete_map,
+            category_orders={axis_group: order, "stat_label": stat_order},
+        )
+        hover_tmpl = (
+            f"{label_map.get(axis_group, 'Player')}: %{{x}}<br>"
+            "Stat: %{customdata[0]}<br>"
+            f"{points_hover_label}: %{{customdata[1]:.1f}}<br>"
+        )
+        if metric_mode == "pct":
+            hover_tmpl += "%: %{y:.1f}<br>"
+        if team_label_present:
+            hover_tmpl += "Team: %{customdata[3]}<br>"
+        hover_tmpl += (
+            f"{value_hover_label}: %{{customdata[2]:{value_hover_fmt}}}<extra></extra>"
+        )
+        fig_bar.update_traces(hovertemplate=hover_tmpl)
+        fig_bar.update_xaxes(categoryorder="array", categoryarray=order, title_text=None)
+        if metric_mode == "pct":
+            fig_bar.update_yaxes(title_text="% of Group Total", range=[0, 100])
+        else:
+            fig_bar.update_yaxes(title_text=points_category_title)
+
+    # Overlay Minutes as a secondary-axis scatter (dots), showing average minutes per group.
     if "Minutes" in dff.columns:
         mins_group = (
-            dff.dropna(subset=[xaxis_group])[[xaxis_group, "Minutes"]]
-            .groupby(xaxis_group, as_index=False)["Minutes"]
+            dff.dropna(subset=[axis_group])[[axis_group, "Minutes"]]
+            .groupby(axis_group, as_index=False)["Minutes"]
             .mean()
         )
-        mins_map = dict(zip(mins_group[xaxis_group], mins_group["Minutes"]))
-        mins_y = [
-            float(mins_map.get(cat)) if cat in mins_map else None for cat in order
-        ]
+        mins_map = dict(zip(mins_group[axis_group], mins_group["Minutes"]))
 
         scatter_kwargs = {}
-        if (
-            team_label_present
-            and team_for_name_map is not None
-            and xaxis_group == "name"
-        ):
-            # Provide team in hover for minutes as well when grouping by Player
-            scatter_kwargs["customdata"] = [
-                team_for_name_map.get(str(cat)) for cat in order
-            ]
-            scatter_hover = f"{label_map.get(xaxis_group, 'Player')}: %{{x}}<br>Team: %{{customdata}}<br>Minutes: %{{y:.0f}}<extra></extra>"
-        else:
-            scatter_hover = f"{label_map.get(xaxis_group, 'Player')}: %{{x}}<br>Minutes: %{{y:.0f}}<extra></extra>"
+        if team_label_present and team_for_name_map is not None and axis_group == "name":
+            scatter_kwargs["customdata"] = [team_for_name_map.get(str(cat)) for cat in order]
 
-        fig_bar.add_scatter(
-            x=order,
-            y=mins_y,
-            mode="markers",
-            name="Minutes",
-            marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
-            yaxis="y2",
-            hovertemplate=scatter_hover,
-            **scatter_kwargs,
-        )
-
-        fig_bar.update_layout(
-            yaxis2=dict(
-                title="Minutes",
-                overlaying="y",
-                side="right",
-                range=[0, 80],
-                showgrid=False,
-                zerolinecolor="#1f2937",
-                tickfont=dict(size=12),
+        if is_mobile:
+            mins_x = [float(mins_map.get(cat)) if cat in mins_map else None for cat in order]
+            if scatter_kwargs:
+                scatter_hover = (
+                    f"{label_map.get(axis_group, 'Player')}: %{{y}}<br>"
+                    "Team: %{customdata}<br>"
+                    "Minutes: %{x:.0f}<extra></extra>"
+                )
+            else:
+                scatter_hover = (
+                    f"{label_map.get(axis_group, 'Player')}: %{{y}}<br>"
+                    "Minutes: %{x:.0f}<extra></extra>"
+                )
+            fig_bar.add_scatter(
+                x=mins_x,
+                y=order,
+                mode="markers",
+                name="Minutes",
+                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                xaxis="x2",
+                hovertemplate=scatter_hover,
+                **scatter_kwargs,
             )
-        )
+            fig_bar.update_layout(
+                xaxis2=dict(
+                    title="Minutes",
+                    overlaying="x",
+                    side="top",
+                    range=[0, 80],
+                    showgrid=False,
+                    zerolinecolor="#1f2937",
+                    tickfont=dict(size=12),
+                )
+            )
+        else:
+            mins_y = [float(mins_map.get(cat)) if cat in mins_map else None for cat in order]
+            if scatter_kwargs:
+                scatter_hover = (
+                    f"{label_map.get(axis_group, 'Player')}: %{{x}}<br>"
+                    "Team: %{customdata}<br>"
+                    "Minutes: %{y:.0f}<extra></extra>"
+                )
+            else:
+                scatter_hover = (
+                    f"{label_map.get(axis_group, 'Player')}: %{{x}}<br>"
+                    "Minutes: %{y:.0f}<extra></extra>"
+                )
+            fig_bar.add_scatter(
+                x=order,
+                y=mins_y,
+                mode="markers",
+                name="Minutes",
+                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                yaxis="y2",
+                hovertemplate=scatter_hover,
+                **scatter_kwargs,
+            )
+            fig_bar.update_layout(
+                yaxis2=dict(
+                    title="Minutes",
+                    overlaying="y",
+                    side="right",
+                    range=[0, 80],
+                    showgrid=False,
+                    zerolinecolor="#1f2937",
+                    tickfont=dict(size=12),
+                )
+            )
+
+    chart_height = max(520, 220 + (24 * height_reference_rows)) if is_mobile else 520
+    margin_cfg = dict(l=20, r=20, t=56, b=96) if is_mobile else dict(l=20, r=20, t=60, b=140)
+    legend_y = -0.12 if is_mobile else -0.26
+
     fig_bar.update_layout(
         legend_title_text="",
-        xaxis_title=label_map.get(xaxis_group, "Player"),
-        # Reduce top margin and add space at the bottom to place legend below the chart
-        margin=dict(l=20, r=20, t=60, b=140),
+        margin=margin_cfg,
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={
             "family": "IBM Plex Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
             "size": 15,
-            # Move legend below the chart and allow wrapping across multiple rows
         },
-        # Move legend below the chart and allow wrapping across multiple rows
         legend={
             "font": {"size": 11},
             "bgcolor": "rgba(0,0,0,0)",
             "orientation": "h",
             "yanchor": "top",
-            "y": -0.26,
+            "y": legend_y,
             "x": 0,
             "xanchor": "left",
             "tracegroupgap": 3,
             "itemwidth": 30,
         },
         barmode="relative",
-        height=520,
-        # Lift the title to the very top so it doesn't collide with the legend
-        title={
-            "y": 0.98,
-            "x": 0.0,
-            "xanchor": "left",
-            "yanchor": "top",
-            "pad": {"t": 2, "b": 0},
-        },
-    )
-    fig_bar.update_xaxes(
-        tickfont={"size": 12},
-        gridcolor="#1f2937",
-        zerolinecolor="#1f2937",
-        tickangle=-30,
-        automargin=True,
-        title_standoff=4,
-    )
-    fig_bar.update_yaxes(
-        tickfont={"size": 12}, gridcolor="#1f2937", zerolinecolor="#1f2937"
+        height=chart_height,
     )
 
-    return fig_bar
+    if is_mobile:
+        fig_bar.update_xaxes(
+            tickfont={"size": 12},
+            gridcolor="#1f2937",
+            zerolinecolor="#1f2937",
+            automargin=True,
+            title_standoff=4,
+        )
+        fig_bar.update_yaxes(
+            title_text=None,
+            tickfont={"size": 12},
+            gridcolor="#1f2937",
+            zerolinecolor="#1f2937",
+            automargin=True,
+        )
+    else:
+        fig_bar.update_xaxes(
+            title_text=None,
+            tickfont={"size": 12},
+            gridcolor="#1f2937",
+            zerolinecolor="#1f2937",
+            tickangle=-30,
+            automargin=True,
+            title_standoff=4,
+        )
+        fig_bar.update_yaxes(
+            tickfont={"size": 12},
+            gridcolor="#1f2937",
+            zerolinecolor="#1f2937",
+        )
+
+    return fig_bar, axis_selector_label
 
 
 def main() -> None:
