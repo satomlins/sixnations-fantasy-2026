@@ -769,8 +769,15 @@ app.layout = dbc.Container(
                                             ],
                                             md=3,
                                         ),
+                                        dbc.Col(
+                                            html.Div(
+                                                f"Data last updated: {LAST_PULLED_LABEL}",
+                                                className="last-updated last-updated--right",
+                                            ),
+                                            className="d-flex align-items-end",
+                                        ),
                                     ],
-                                    justify="center",
+                                    align="end",
                                 ),
                             ]
                         ),
@@ -784,81 +791,22 @@ app.layout = dbc.Container(
         html.Footer(
             [
                 html.Div(
-                    f"Data Last Updated: {LAST_PULLED_LABEL}",
-                    className="footer-pulled",
-                ),
-                html.Div(
                     [
-                        html.Div(
-                            [
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/mail-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("Email", className="footer-sr"),
-                                    ],
-                                    href="mailto:fantasy6n@stomlins.com",
-                                    className="footer-link",
-                                    title="Email fantasy6n@stomlins.com",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/linkedin-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("LinkedIn", className="footer-sr"),
-                                    ],
-                                    href="https://linkedin.stomlins.com",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on LinkedIn",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/github-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("GitHub", className="footer-sr"),
-                                    ],
-                                    href="https://github.com/satomlins/",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on GitHub",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/medium-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("Medium", className="footer-sr"),
-                                    ],
-                                    href="https://stomlins.medium.com/",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on Medium",
-                                ),
-                            ],
-                            className="footer-actions",
-                        ),
                         html.Div(
                             f"\u00a9 {FOOTER_YEAR} Scott Tomlins | website by Scott Tomlins",
                             className="footer-copy",
+                        ),
+                        html.Div(
+                            [
+                                html.A("Email", href="mailto:fantasy6n@stomlins.com", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("LinkedIn", href="https://linkedin.stomlins.com", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("GitHub", href="https://github.com/satomlins/", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("Medium", href="https://stomlins.medium.com/", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                            ],
+                            className="footer-actions",
                         ),
                     ],
                     className="footer-center-stack",
@@ -1269,9 +1217,10 @@ def refresh(
         font={
             "family": "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
             "size": 15,
+            "color": "#8f9ba8",
         },
         legend={
-            "font": {"size": 11},
+            "font": {"size": 11, "color": "#8f9ba8"},
             "bgcolor": "rgba(0,0,0,0)",
             "orientation": "h",
             "yanchor": "top",
