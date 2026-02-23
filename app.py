@@ -769,8 +769,15 @@ app.layout = dbc.Container(
                                             ],
                                             md=3,
                                         ),
+                                        dbc.Col(
+                                            html.Div(
+                                                f"Data last updated: {LAST_PULLED_LABEL}",
+                                                className="last-updated last-updated--right",
+                                            ),
+                                            className="d-flex align-items-end",
+                                        ),
                                     ],
-                                    justify="center",
+                                    align="end",
                                 ),
                             ]
                         ),
@@ -784,81 +791,22 @@ app.layout = dbc.Container(
         html.Footer(
             [
                 html.Div(
-                    f"Data Last Updated: {LAST_PULLED_LABEL}",
-                    className="footer-pulled",
-                ),
-                html.Div(
                     [
-                        html.Div(
-                            [
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/mail-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("Email", className="footer-sr"),
-                                    ],
-                                    href="mailto:fantasy6n@stomlins.com",
-                                    className="footer-link",
-                                    title="Email fantasy6n@stomlins.com",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/linkedin-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("LinkedIn", className="footer-sr"),
-                                    ],
-                                    href="https://linkedin.stomlins.com",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on LinkedIn",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/github-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("GitHub", className="footer-sr"),
-                                    ],
-                                    href="https://github.com/satomlins/",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on GitHub",
-                                ),
-                                html.A(
-                                    [
-                                        html.Img(
-                                            src="/assets/medium-icon.svg",
-                                            className="footer-icon-img",
-                                            alt="",
-                                            **{"aria-hidden": "true"},
-                                        ),
-                                        html.Span("Medium", className="footer-sr"),
-                                    ],
-                                    href="https://stomlins.medium.com/",
-                                    target="_blank",
-                                    rel="noopener noreferrer",
-                                    className="footer-link",
-                                    title="Scott Tomlins on Medium",
-                                ),
-                            ],
-                            className="footer-actions",
-                        ),
                         html.Div(
                             f"\u00a9 {FOOTER_YEAR} Scott Tomlins | website by Scott Tomlins",
                             className="footer-copy",
+                        ),
+                        html.Div(
+                            [
+                                html.A("Email", href="mailto:fantasy6n@stomlins.com", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("LinkedIn", href="https://linkedin.stomlins.com", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("GitHub", href="https://github.com/satomlins/", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                                html.Span("·", className="footer-sep"),
+                                html.A("Medium", href="https://stomlins.medium.com/", target="_blank", rel="noopener noreferrer", className="footer-link"),
+                            ],
+                            className="footer-actions",
                         ),
                     ],
                     className="footer-center-stack",
@@ -1205,7 +1153,7 @@ def refresh(
                 y=order,
                 mode="markers",
                 name="Minutes",
-                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                marker=dict(color="#45d9e7", size=8, line=dict(color="#2bbfcc", width=0.5)),
                 xaxis="x2",
                 hovertemplate=scatter_hover,
                 **scatter_kwargs,
@@ -1217,7 +1165,7 @@ def refresh(
                     side="top",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1f2937",
+                    zerolinecolor="#1d242c",
                     tickfont=dict(size=12),
                 )
             )
@@ -1239,7 +1187,7 @@ def refresh(
                 y=mins_y,
                 mode="markers",
                 name="Minutes",
-                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                marker=dict(color="#45d9e7", size=8, line=dict(color="#2bbfcc", width=0.5)),
                 yaxis="y2",
                 hovertemplate=scatter_hover,
                 **scatter_kwargs,
@@ -1251,7 +1199,7 @@ def refresh(
                     side="right",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1f2937",
+                    zerolinecolor="#1d242c",
                     tickfont=dict(size=12),
                 )
             )
@@ -1267,11 +1215,12 @@ def refresh(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={
-            "family": "IBM Plex Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+            "family": "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
             "size": 15,
+            "color": "#8f9ba8",
         },
         legend={
-            "font": {"size": 11},
+            "font": {"size": 11, "color": "#8f9ba8"},
             "bgcolor": "rgba(0,0,0,0)",
             "orientation": "h",
             "yanchor": "top",
@@ -1288,32 +1237,32 @@ def refresh(
     if is_mobile:
         fig_bar.update_xaxes(
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
             title_text=None,
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             automargin=True,
         )
     else:
         fig_bar.update_xaxes(
             title_text=None,
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             tickangle=-30,
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
         )
 
     return fig_bar, axis_selector_label

@@ -1,42 +1,28 @@
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
-  --sn-midnight: #030c25;
-  --sn-deep: #071a47;
-  --sn-cobalt: #0f3ea8;
-  --sn-royal: #1f6fe5;
-  --sn-ice: #9ec8ff;
-  --sn-white: #f4f8ff;
-  --sn-red: #c91f37;
-  --sn-green: #117a4e;
-  --panel: rgba(7, 20, 56, 0.86);
-  --panel-strong: rgba(8, 24, 64, 0.96);
-  --panel-elevated: rgba(10, 30, 78, 0.94);
-  --border-soft: rgba(158, 200, 255, 0.28);
-  --border-strong: rgba(158, 200, 255, 0.52);
-  --text-main: #ebf3ff;
-  --text-dim: #b8c9ea;
-  --focus-ring: 0 0 0 3px rgba(31, 111, 229, 0.34);
-  --shadow-lg: 0 24px 70px rgba(1, 6, 20, 0.55);
-  --shadow-md: 0 14px 36px rgba(1, 8, 26, 0.45);
+  --bg: #0b0d10;
+  --text: #d8dde3;
+  --muted: #8f9ba8;
+  --line: #1d242c;
+  --accent: #45d9e7;
+  --accent-soft: rgba(69, 217, 231, 0.15);
   --section-gap: 14px;
 }
 
 html,
 body,
 #_dash-app-content {
-  background:
-    radial-gradient(950px 540px at -8% -18%, rgba(31, 111, 229, 0.28) 0%, transparent 62%),
-    radial-gradient(760px 470px at 105% -2%, rgba(201, 31, 55, 0.2) 0%, transparent 58%),
-    radial-gradient(640px 420px at 70% 112%, rgba(17, 122, 78, 0.16) 0%, transparent 65%),
-    linear-gradient(152deg, var(--sn-midnight) 0%, #031235 34%, var(--sn-deep) 100%);
-  color: var(--text-main);
+  background: var(--bg);
+  color: var(--text);
 }
 
 body {
-  font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
-  font-size: 16px;
-  letter-spacing: 0.1px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -47,7 +33,8 @@ h5,
 .hero-title,
 .card-title,
 .form-label {
-  font-family: "Sora", "IBM Plex Sans", sans-serif;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
 }
 
 .neo-container {
@@ -61,81 +48,43 @@ h5,
   --bs-gutter-y: 0.65rem;
 }
 
+/* ── Hero ───────────────────────────────────────────────── */
+
 .hero {
-  position: relative;
   margin-bottom: var(--section-gap);
-  padding: 28px 28px 22px;
-  border-radius: 24px;
-  background:
-    linear-gradient(136deg, rgba(5, 19, 53, 0.9) 0%, rgba(10, 31, 79, 0.78) 52%, rgba(5, 19, 53, 0.9) 100%);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-  animation: rise-in 420ms ease-out both;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(158, 200, 255, 0.18) 46%, transparent 100%),
-    radial-gradient(560px 260px at 100% -10%, rgba(201, 31, 55, 0.2), transparent 65%);
-  pointer-events: none;
-}
-
-.hero::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #0d4fd1 0%, #1f6fe5 36%, #c91f37 68%, #117a4e 100%);
+  padding: 28px 4px 22px;
+  border-bottom: 1px solid var(--line);
 }
 
 .hero-title {
-  position: relative;
-  z-index: 1;
-  color: var(--sn-white);
-  font-size: clamp(2.1rem, 4.3vw, 3.25rem);
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: 0.35px;
+  color: var(--text);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
 }
 
 .hero-subtitle {
-  position: relative;
-  z-index: 1;
-  margin-top: 8px;
-  color: var(--text-dim);
-  font-size: clamp(1.03rem, 1.6vw, 1.22rem);
-  letter-spacing: 0.35px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
+
+/* ── Panels ─────────────────────────────────────────────── */
 
 .panel {
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(11, 29, 73, 0.85) 0%, rgba(8, 21, 58, 0.92) 100%);
-  border: 1px solid var(--border-soft) !important;
-  border-radius: 20px !important;
-  box-shadow: var(--shadow-md);
-  padding: 18px 18px 14px;
+  background: rgba(255, 255, 255, 0.015) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  padding: 16px 18px 14px;
   overflow: hidden;
-  animation: rise-in 460ms ease-out both;
-}
-
-.panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(158, 200, 255, 0.08) 0%, transparent 36%);
-  pointer-events: none;
 }
 
 .filters-panel {
-  background:
-    linear-gradient(165deg, rgba(6, 22, 60, 0.95) 0%, rgba(8, 25, 67, 0.88) 100%);
   overflow: visible !important;
   z-index: 40;
 }
@@ -145,38 +94,41 @@ h5,
 }
 
 .card-title {
-  color: var(--sn-white);
-  font-size: 1.04rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.6rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
 }
 
 .panel .form-label {
-  color: var(--sn-ice);
-  font-size: 0.84rem;
-  font-weight: 700;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   margin-bottom: 0.34rem;
 }
 
 .panel hr {
-  border-color: rgba(158, 200, 255, 0.26);
+  border-color: var(--line);
   opacity: 1;
   margin: 14px 0 16px;
 }
+
+/* ── Dropdowns ──────────────────────────────────────────── */
 
 .neo-dropdown,
 .neo-dropdown .Select,
 .neo-dropdown .Select-control,
 .neo-dropdown .Select__control,
 .neo-dropdown [class*="-control"] {
-  background: var(--panel-elevated) !important;
-  color: var(--text-main) !important;
-  border-color: var(--border-strong) !important;
-  border-radius: 13px !important;
-  min-height: 48px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+  border-radius: 6px !important;
+  min-height: 40px !important;
   box-shadow: none !important;
 }
 
@@ -186,14 +138,14 @@ h5,
 .neo-dropdown .Select.is-open > .Select-control,
 .neo-dropdown .Select__control--is-focused,
 .neo-dropdown [class*="-control"][class*="focused"] {
-  border-color: #60a8ff !important;
-  box-shadow: var(--focus-ring) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-soft) !important;
 }
 
 .neo-dropdown .Select-placeholder,
 .neo-dropdown .Select__placeholder,
 .neo-dropdown [class*="-placeholder"] {
-  color: #c8d8f4 !important;
+  color: var(--muted) !important;
   opacity: 1 !important;
 }
 
@@ -205,10 +157,9 @@ h5,
 .neo-dropdown [class*="-input"] input,
 .neo-dropdown .Select-value,
 .neo-dropdown .Select__value-container {
-  color: var(--sn-white) !important;
+  color: var(--text) !important;
 }
 
-/* Keep multi-select summary text (e.g. "N selected") legible on dark controls. */
 .neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper,
 .neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper *,
 .neo-dropdown .Select--multi.has-value .Select-value-label,
@@ -218,8 +169,8 @@ h5,
 .neo-dropdown [class*="-valueContainer"],
 .neo-dropdown [class*="-valueContainer"] *,
 .neo-dropdown [class*="-multiValueLabel"] {
-  color: var(--sn-white) !important;
-  -webkit-text-fill-color: var(--sn-white) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
   opacity: 1 !important;
 }
 
@@ -227,19 +178,19 @@ h5,
 .neo-dropdown .Select.has-value .Select__control *,
 .neo-dropdown .Select--multi.has-value .Select-control *,
 .neo-dropdown .Select--multi.has-value .Select__control * {
-  color: var(--sn-white) !important;
-  -webkit-text-fill-color: var(--sn-white) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
   opacity: 1 !important;
 }
 
-/* Last-resort control text override for Dash's dynamic "N selected" rendering. */
+/* Last-resort control text override */
 #team-filter *,
 #position-filter *,
 #opponent-filter *,
 #round-filter *,
 #axis-group * {
-  color: var(--sn-white) !important;
-  -webkit-text-fill-color: var(--sn-white) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
 }
 
 #team-filter .Select-placeholder,
@@ -250,11 +201,10 @@ h5,
 #position-filter .Select__placeholder,
 #opponent-filter .Select__placeholder,
 #round-filter .Select__placeholder {
-  color: #c8d8f4 !important;
-  -webkit-text-fill-color: #c8d8f4 !important;
+  color: var(--muted) !important;
+  -webkit-text-fill-color: var(--muted) !important;
 }
 
-/* Hide Dash's multi-select "N selected" badge text/pill. */
 .neo-dropdown .dash-dropdown-value-count {
   display: none !important;
 }
@@ -262,58 +212,59 @@ h5,
 .neo-dropdown .Select-arrow,
 .neo-dropdown .Select__dropdown-indicator,
 .neo-dropdown [class*="-indicator"] {
-  color: var(--sn-ice) !important;
+  color: var(--muted) !important;
 }
 
 .neo-dropdown .Select-clear-zone,
 .neo-dropdown .Select__clear-indicator {
-  color: #dbe6fb !important;
+  color: var(--muted) !important;
 }
 
 .neo-dropdown .Select-menu-outer,
 .neo-dropdown .Select__menu,
 .neo-dropdown [class*="-menu"] {
-  background: #081d50 !important;
-  color: var(--sn-white) !important;
-  border: 1px solid var(--border-strong) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 14px 36px rgba(2, 8, 24, 0.58);
+  background: #0f1215 !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   z-index: 6000 !important;
 }
 
 .neo-dropdown .Select-option,
 .neo-dropdown .Select__option,
 .neo-dropdown [class*="-option"] {
-  background: #081d50 !important;
-  color: var(--sn-white) !important;
+  background: #0f1215 !important;
+  color: var(--text) !important;
 }
 
 .neo-dropdown .Select-option.is-focused,
 .neo-dropdown .Select__option--is-focused,
 .neo-dropdown [class*="-option"][class*="focused"] {
-  background: rgba(31, 111, 229, 0.32) !important;
+  background: var(--accent-soft) !important;
 }
 
 .neo-dropdown .Select-option.is-selected,
 .neo-dropdown .Select__option--is-selected,
 .neo-dropdown [class*="-option"][class*="selected"] {
-  background: rgba(201, 31, 55, 0.34) !important;
-  color: #fff !important;
+  background: rgba(69, 217, 231, 0.18) !important;
+  color: var(--text) !important;
 }
 
 .neo-dropdown .Select--multi .Select-value,
 .neo-dropdown .Select__multi-value,
 .neo-dropdown [class*="-multiValue"] {
-  background: rgba(31, 111, 229, 0.26) !important;
-  border: 1px solid rgba(158, 200, 255, 0.48) !important;
-  color: var(--sn-white) !important;
+  background: rgba(69, 217, 231, 0.1) !important;
+  border: 1px solid rgba(69, 217, 231, 0.28) !important;
+  color: var(--text) !important;
 }
 
 .neo-dropdown .Select__multi-value__label,
 .neo-dropdown .Select__multi-value__remove {
-  color: var(--sn-white) !important;
+  color: var(--text) !important;
 }
 
+/* Elevate only the active dropdown so siblings never overlap its menu */
 .filters-panel .dash-dropdown,
 .filters-panel .Select,
 .filters-panel .Select-control,
@@ -322,7 +273,6 @@ h5,
   z-index: 1;
 }
 
-/* Elevate only the active dropdown so sibling controls never overlap its menu. */
 .filters-panel .dash-dropdown:focus-within,
 .filters-panel .Select.is-open,
 .filters-panel [class*="menu-is-open"] {
@@ -334,6 +284,8 @@ h5,
 .filters-panel [class*="-menu"] {
   z-index: 9999 !important;
 }
+
+/* ── Radio buttons ──────────────────────────────────────── */
 
 .neo-radio {
   display: flex;
@@ -349,32 +301,49 @@ h5,
   gap: 0.58rem;
   margin: 0;
   white-space: nowrap;
-  color: var(--sn-white) !important;
-  font-size: 1.02rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  color: var(--text) !important;
+  font-size: 0.9rem;
+  font-weight: 400;
   cursor: pointer;
 }
 
 .neo-radio input[type="radio"] {
-  accent-color: var(--sn-royal);
-  width: 1.05rem;
-  height: 1.05rem;
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
 }
+
+/* ── Chart ──────────────────────────────────────────────── */
+
+.last-updated {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding-bottom: 6px;
+}
+
+.last-updated--right {
+  text-align: right;
+  margin-left: auto;
+}
+
 
 .neo-graph {
   padding: 4px;
 }
 
 .neo-graph .main-svg {
-  font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .neo-graph .legendtext,
 .neo-graph .cartesianlayer .xtick text,
 .neo-graph .cartesianlayer .ytick text {
-  fill: var(--text-main) !important;
+  fill: var(--muted) !important;
 }
+
+/* ── Footer ─────────────────────────────────────────────── */
 
 .app-footer {
   margin-top: var(--section-gap);
@@ -385,53 +354,48 @@ h5,
   margin-left: -50vw;
   margin-right: -50vw;
   padding: 16px clamp(16px, 5vw, 56px);
-  border-radius: 0;
-  background:
-    linear-gradient(180deg, rgba(6, 17, 44, 0.9) 0%, rgba(4, 12, 32, 0.98) 100%);
-  border-top: 1px solid rgba(158, 200, 255, 0.24);
-  border-bottom: none;
+  background: transparent;
+  border-top: 1px solid var(--line);
   box-shadow: none;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr;
   grid-template-rows: auto auto;
   grid-template-areas:
-    "pulled actions spacer"
-    ". copy .";
+    "copy"
+    "actions";
   align-items: center;
-  column-gap: 12px;
   row-gap: 6px;
-}
-
-.footer-copy,
-.footer-pulled {
-  color: var(--text-dim);
-  font-size: 0.92rem;
-  margin: 0;
 }
 
 .footer-copy {
   grid-area: copy;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-family: "IBM Plex Mono", monospace;
+  margin: 0;
   justify-self: center;
   text-align: center;
 }
 
-.footer-pulled {
-  grid-area: pulled;
-  justify-self: start;
-  text-align: left;
-}
-
 .footer-link {
-  display: inline-flex;
-  align-items: center;
-  color: var(--sn-white);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
   text-decoration: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  border-bottom: 1px solid transparent;
+  transition: color 140ms ease, border-color 140ms ease;
 }
 
 .footer-link:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.footer-sep {
+  color: var(--line);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  user-select: none;
 }
 
 .footer-center-stack {
@@ -442,15 +406,8 @@ h5,
   grid-area: actions;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   justify-self: center;
-}
-
-.footer-icon-img {
-  width: 24px;
-  height: 24px;
-  display: block;
-  opacity: 0.95;
 }
 
 .footer-sr {
@@ -465,45 +422,35 @@ h5,
   border: 0;
 }
 
+/* ── Responsive ─────────────────────────────────────────── */
+
 @media (max-width: 991px) {
   .hero {
-    padding: 24px 20px 18px;
+    padding: 20px 4px 16px;
   }
 
   .panel {
-    padding: 16px 14px 12px;
+    padding: 14px 14px 12px;
   }
 
   .neo-radio label {
-    font-size: 0.96rem;
+    font-size: 0.86rem;
+  }
+
+  .last-updated--right {
+    margin-left: 0;
+    text-align: center;
+    margin-top: 20px;
   }
 
   .app-footer {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "pulled"
-      "actions"
-      "copy";
     row-gap: 8px;
   }
 
-  .footer-pulled,
   .footer-actions,
   .footer-copy {
     align-self: center;
     justify-self: center;
     text-align: center;
-  }
-}
-
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
