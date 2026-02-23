@@ -1205,7 +1205,7 @@ def refresh(
                 y=order,
                 mode="markers",
                 name="Minutes",
-                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                marker=dict(color="#45d9e7", size=8, line=dict(color="#2bbfcc", width=0.5)),
                 xaxis="x2",
                 hovertemplate=scatter_hover,
                 **scatter_kwargs,
@@ -1217,7 +1217,7 @@ def refresh(
                     side="top",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1f2937",
+                    zerolinecolor="#1d242c",
                     tickfont=dict(size=12),
                 )
             )
@@ -1239,7 +1239,7 @@ def refresh(
                 y=mins_y,
                 mode="markers",
                 name="Minutes",
-                marker=dict(color="#7dd3fc", size=8, line=dict(color="#0ea5e9", width=0.5)),
+                marker=dict(color="#45d9e7", size=8, line=dict(color="#2bbfcc", width=0.5)),
                 yaxis="y2",
                 hovertemplate=scatter_hover,
                 **scatter_kwargs,
@@ -1251,7 +1251,7 @@ def refresh(
                     side="right",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1f2937",
+                    zerolinecolor="#1d242c",
                     tickfont=dict(size=12),
                 )
             )
@@ -1267,7 +1267,7 @@ def refresh(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={
-            "family": "IBM Plex Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+            "family": "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
             "size": 15,
         },
         legend={
@@ -1288,32 +1288,32 @@ def refresh(
     if is_mobile:
         fig_bar.update_xaxes(
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
             title_text=None,
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             automargin=True,
         )
     else:
         fig_bar.update_xaxes(
             title_text=None,
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
             tickangle=-30,
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
             tickfont={"size": 12},
-            gridcolor="#1f2937",
-            zerolinecolor="#1f2937",
+            gridcolor="#1d242c",
+            zerolinecolor="#1d242c",
         )
 
     return fig_bar, axis_selector_label
