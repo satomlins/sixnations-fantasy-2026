@@ -632,8 +632,8 @@ def control_card():
                                 dcc.RadioItems(
                                     id="metric-mode",
                                     options=[
-                                        {"label": "% of Player Total", "value": "pct"},
                                         {"label": "Points", "value": "points"},
+                                        {"label": "Percentage", "value": "pct"},
                                     ],
                                     value="points",
                                     inline=True,
