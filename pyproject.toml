@@ -17,6 +17,7 @@ dependencies = [
     "dash-bootstrap-components>=1.6.0",
     "plotly>=5.20.0",
     "duckdb>=1.0.0",
+    "gunicorn>=26.0.0",
 ]
 
 [project.scripts]
