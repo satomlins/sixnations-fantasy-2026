@@ -9,7 +9,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "ipykernel>=7.1.0",
     "pandas>=3.0.0",
     "requests>=2.32.5",
     "python-dotenv>=1.0.0",
@@ -28,3 +27,8 @@ py-modules = ["app", "fantasy_ingest"]
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+]
