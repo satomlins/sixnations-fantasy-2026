@@ -1,456 +1,184 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;700&display=swap");
+/* ============================================================
+   fantasy6n - site stylesheet
+   Loaded after 00-stomlins.css (the stomlins design system core,
+   vendored unchanged). Tokens, type, header, footer and labels
+   come from the core. This file holds only what is specific to
+   this site: the filter grid, the Dash control overrides and the
+   footer icon masks.
+   ============================================================ */
 
 :root {
-  --bg: #0b0d10;
-  --text: #d8dde3;
-  --muted: #8f9ba8;
-  --line: #1d242c;
   --accent: #45d9e7;
-  --accent-soft: rgba(69, 217, 231, 0.15);
-  --section-gap: 14px;
+  --label-case: lowercase;
+  --page-width: 1200px;
 }
 
-html,
-body,
-#_dash-app-content {
-  background: var(--bg);
-  color: var(--text);
+/* ------------------------------------------------------------
+   Filters
+   ------------------------------------------------------------ */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
 }
 
-body {
-  font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+.filter-grid + .filter-grid {
+  margin-top: var(--space-5);
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-.hero-title,
-.card-title,
-.form-label {
-  font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.04em;
+.field {
+  min-width: 0;
 }
 
-.neo-container {
-  padding-top: 30px;
-  padding-bottom: 0;
-  max-width: 1280px;
+.field .label {
+  display: block;
 }
 
-.g-tight {
-  --bs-gutter-x: 1rem;
-  --bs-gutter-y: 0.65rem;
+.axis-field {
+  max-width: 280px;
+  margin-top: var(--space-4);
 }
 
-/* ── Hero ───────────────────────────────────────────────── */
-
-.hero {
-  margin-bottom: var(--section-gap);
-  padding: 28px 4px 22px;
-  border-bottom: 1px solid var(--line);
-}
-
-.hero-title {
-  color: var(--text);
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-}
-
-.hero-subtitle {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-family: "IBM Plex Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-/* ── Panels ─────────────────────────────────────────────── */
-
-.panel {
-  background: rgba(255, 255, 255, 0.015) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  padding: 16px 18px 14px;
-  overflow: hidden;
-}
-
-.filters-panel {
-  overflow: visible !important;
-  z-index: 40;
-}
-
-.filters-section {
-  margin-bottom: var(--section-gap);
-}
-
-.card-title {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 0.75rem;
-}
-
-.panel .form-label {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 0.34rem;
-}
-
-.panel hr {
-  border-color: var(--line);
-  opacity: 1;
-  margin: 14px 0 16px;
-}
-
-/* ── Dropdowns ──────────────────────────────────────────── */
-
-.neo-dropdown,
-.neo-dropdown .Select,
-.neo-dropdown .Select-control,
-.neo-dropdown .Select__control,
-.neo-dropdown [class*="-control"] {
-  background: rgba(255, 255, 255, 0.03) !important;
-  color: var(--text) !important;
-  border-color: var(--line) !important;
-  border-radius: 6px !important;
-  min-height: 40px !important;
-  box-shadow: none !important;
-}
-
-.neo-dropdown .Select-control:hover,
-.neo-dropdown .Select__control:hover,
-.neo-dropdown [class*="-control"]:hover,
-.neo-dropdown .Select.is-open > .Select-control,
-.neo-dropdown .Select__control--is-focused,
-.neo-dropdown [class*="-control"][class*="focused"] {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px var(--accent-soft) !important;
-}
-
-.neo-dropdown .Select-placeholder,
-.neo-dropdown .Select__placeholder,
-.neo-dropdown [class*="-placeholder"] {
-  color: var(--muted) !important;
-  opacity: 1 !important;
-}
-
-.neo-dropdown .Select-value-label,
-.neo-dropdown .Select__single-value,
-.neo-dropdown .Select-input > input,
-.neo-dropdown .Select__input input,
-.neo-dropdown [class*="-singleValue"],
-.neo-dropdown [class*="-input"] input,
-.neo-dropdown .Select-value,
-.neo-dropdown .Select__value-container {
-  color: var(--text) !important;
-}
-
-.neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper,
-.neo-dropdown .Select--multi.has-value .Select-multi-value-wrapper *,
-.neo-dropdown .Select--multi.has-value .Select-value-label,
-.neo-dropdown .Select--multi.has-value .Select-value,
-.neo-dropdown .Select.has-value .Select-value-label,
-.neo-dropdown .Select.has-value .Select-value,
-.neo-dropdown [class*="-valueContainer"],
-.neo-dropdown [class*="-valueContainer"] *,
-.neo-dropdown [class*="-multiValueLabel"] {
-  color: var(--text) !important;
-  -webkit-text-fill-color: var(--text) !important;
-  opacity: 1 !important;
-}
-
-.neo-dropdown .Select.has-value .Select-control *,
-.neo-dropdown .Select.has-value .Select__control *,
-.neo-dropdown .Select--multi.has-value .Select-control *,
-.neo-dropdown .Select--multi.has-value .Select__control * {
-  color: var(--text) !important;
-  -webkit-text-fill-color: var(--text) !important;
-  opacity: 1 !important;
-}
-
-/* Last-resort control text override */
-#team-filter *,
-#position-filter *,
-#opponent-filter *,
-#round-filter *,
-#axis-group * {
-  color: var(--text) !important;
-  -webkit-text-fill-color: var(--text) !important;
-}
-
-#team-filter .Select-placeholder,
-#position-filter .Select-placeholder,
-#opponent-filter .Select-placeholder,
-#round-filter .Select-placeholder,
-#team-filter .Select__placeholder,
-#position-filter .Select__placeholder,
-#opponent-filter .Select__placeholder,
-#round-filter .Select__placeholder {
-  color: var(--muted) !important;
-  -webkit-text-fill-color: var(--muted) !important;
-}
-
-.neo-dropdown .dash-dropdown-value-count {
-  display: none !important;
-}
-
-.neo-dropdown .Select-arrow,
-.neo-dropdown .Select__dropdown-indicator,
-.neo-dropdown [class*="-indicator"] {
-  color: var(--muted) !important;
-}
-
-.neo-dropdown .Select-clear-zone,
-.neo-dropdown .Select__clear-indicator {
-  color: var(--muted) !important;
-}
-
-.neo-dropdown .Select-menu-outer,
-.neo-dropdown .Select__menu,
-.neo-dropdown [class*="-menu"] {
-  background: #0f1215 !important;
-  color: var(--text) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 6px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  z-index: 6000 !important;
-}
-
-.neo-dropdown .Select-option,
-.neo-dropdown .Select__option,
-.neo-dropdown [class*="-option"] {
-  background: #0f1215 !important;
-  color: var(--text) !important;
-}
-
-.neo-dropdown .Select-option.is-focused,
-.neo-dropdown .Select__option--is-focused,
-.neo-dropdown [class*="-option"][class*="focused"] {
-  background: var(--accent-soft) !important;
-}
-
-.neo-dropdown .Select-option.is-selected,
-.neo-dropdown .Select__option--is-selected,
-.neo-dropdown [class*="-option"][class*="selected"] {
-  background: rgba(69, 217, 231, 0.18) !important;
-  color: var(--text) !important;
-}
-
-.neo-dropdown .Select--multi .Select-value,
-.neo-dropdown .Select__multi-value,
-.neo-dropdown [class*="-multiValue"] {
-  background: rgba(69, 217, 231, 0.1) !important;
-  border: 1px solid rgba(69, 217, 231, 0.28) !important;
-  color: var(--text) !important;
-}
-
-.neo-dropdown .Select__multi-value__label,
-.neo-dropdown .Select__multi-value__remove {
-  color: var(--text) !important;
-}
-
-/* Elevate only the active dropdown so siblings never overlap its menu */
-.filters-panel .dash-dropdown,
-.filters-panel .Select,
-.filters-panel .Select-control,
-.filters-panel .Select__control {
-  position: relative;
-  z-index: 1;
-}
-
-.filters-panel .dash-dropdown:focus-within,
-.filters-panel .Select.is-open,
-.filters-panel [class*="menu-is-open"] {
-  z-index: 9000 !important;
-}
-
-.filters-panel .Select-menu-outer,
-.filters-panel .Select__menu,
-.filters-panel [class*="-menu"] {
-  z-index: 9999 !important;
-}
-
-/* ── Radio buttons ──────────────────────────────────────── */
-
-.neo-radio {
+/* ------------------------------------------------------------
+   Radio groups (dcc.RadioItems)
+   ------------------------------------------------------------ */
+.radio-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 1.15rem;
-  margin-top: 0.32rem;
+  gap: 6px var(--space-4);
 }
 
-.neo-radio label {
+.radio-group label {
   display: inline-flex;
   align-items: center;
-  gap: 0.58rem;
+  gap: var(--space-2);
   margin: 0;
   white-space: nowrap;
-  color: var(--text) !important;
-  font-size: 0.9rem;
-  font-weight: 400;
   cursor: pointer;
 }
 
-.neo-radio input[type="radio"] {
+.radio-group input[type="radio"] {
   accent-color: var(--accent);
-  width: 1rem;
-  height: 1rem;
-}
-
-/* ── Chart ──────────────────────────────────────────────── */
-
-.last-updated {
-  color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  padding-bottom: 6px;
-}
-
-.last-updated--right {
-  text-align: right;
-  margin-left: auto;
-}
-
-
-.neo-graph {
-  padding: 4px;
-}
-
-.neo-graph .main-svg {
-  font-family: "Inter", sans-serif;
-}
-
-.neo-graph .legendtext,
-.neo-graph .cartesianlayer .xtick text,
-.neo-graph .cartesianlayer .ytick text {
-  fill: var(--muted) !important;
-}
-
-/* ── Footer ─────────────────────────────────────────────── */
-
-.app-footer {
-  margin-top: var(--section-gap);
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-  padding: 16px clamp(16px, 5vw, 56px);
-  background: transparent;
-  border-top: 1px solid var(--line);
-  box-shadow: none;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "copy"
-    "actions";
-  align-items: center;
-  row-gap: 6px;
-}
-
-.footer-copy {
-  grid-area: copy;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-family: "IBM Plex Mono", monospace;
   margin: 0;
-  justify-self: center;
-  text-align: center;
 }
 
-.footer-link {
-  color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: color 140ms ease, border-color 140ms ease;
+/* ------------------------------------------------------------
+   Dropdowns (dcc.Dropdown, Dash 4.x)
+   ------------------------------------------------------------ */
+
+/* Dash 4 themes its controls through CSS variables set on :root. Remap them on the
+   page container so they cascade everywhere (radio labels, checkboxes, focus rings,
+   separators, text) without element-by-element overrides */
+.page {
+  --Dash-Fill-Interactive-Strong: var(--border-strong);
+  --Dash-Fill-Interactive-Weak:   var(--surface-2);
+  --Dash-Fill-Disabled:           var(--border);
+  --Dash-Shading-Strong:          var(--hover);
+  --Dash-Shading-Weak:            var(--surface-2);
+  --Dash-Stroke-Strong:           var(--border);
+  --Dash-Text-Strong:             var(--text);
+  --Dash-Text-Weak:               var(--text-muted);
+  --Dash-Text-Disabled:           var(--text-muted);
+  --Dash-Fill-Inverse-Strong:     var(--bg);
 }
 
-.footer-link:hover {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+/* Control: the button carries the border, the trigger inside it carries none */
+.site-dropdown {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  min-height: 36px !important;
+  box-shadow: none !important;
 }
 
-.footer-sep {
-  color: var(--line);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem;
-  user-select: none;
+.site-dropdown .dash-dropdown-grid-container.dash-dropdown-trigger {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
 }
 
-.footer-center-stack {
-  display: contents;
+.site-dropdown:hover {
+  border-color: var(--text-muted) !important;
 }
 
-.footer-actions {
-  grid-area: actions;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  justify-self: center;
+/* Placeholder, value, chips */
+.site-dropdown .dash-dropdown-placeholder { color: var(--text-muted) !important; font-size: var(--text-base) !important; }
+.site-dropdown .dash-dropdown-value       { color: var(--text) !important; font-size: var(--text-base) !important; }
+.site-dropdown .dash-dropdown-value-item  { background-color: var(--surface-2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; border-radius: var(--radius) !important; font-size: var(--text-sm) !important; }
+.site-dropdown .dash-dropdown-value-count { display: none !important; }
+.site-dropdown .dash-dropdown-clear,
+.site-dropdown .dash-dropdown-trigger-icon { color: var(--text-muted) !important; }
+
+/* Dropdown panel: sibling of the control inside dash-dropdown-wrapper (Radix portal) */
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-content {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
 }
 
-.footer-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-search-container {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
 }
 
-/* ── Responsive ─────────────────────────────────────────── */
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-search {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
 
-@media (max-width: 991px) {
-  .hero {
-    padding: 20px 4px 16px;
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-search-container,
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-search {
+  border-radius: var(--radius) !important;
+}
+
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-action-button {
+  color: var(--text-muted) !important;
+}
+
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-option {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+.dash-dropdown-wrapper:has(.site-dropdown) .dash-dropdown-option:hover {
+  background-color: var(--hover) !important;
+}
+
+/* ------------------------------------------------------------
+   Footer icons: the standard Bootstrap Icons, as masks so they
+   take the link colour (Dash cannot inline SVG)
+   ------------------------------------------------------------ */
+.icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.icon--envelope { --icon: url("icons/envelope.svg"); }
+.icon--linkedin { --icon: url("icons/linkedin.svg"); }
+.icon--github   { --icon: url("icons/github.svg"); }
+
+/* ------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------ */
+@media screen and (max-width: 768px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 
-  .panel {
-    padding: 14px 14px 12px;
-  }
-
-  .neo-radio label {
-    font-size: 0.86rem;
-  }
-
-  .last-updated--right {
-    margin-left: 0;
-    text-align: center;
-    margin-top: 20px;
-  }
-
-  .app-footer {
-    row-gap: 8px;
-  }
-
-  .footer-actions,
-  .footer-copy {
-    align-self: center;
-    justify-self: center;
-    text-align: center;
+  .axis-field {
+    max-width: none;
   }
 }

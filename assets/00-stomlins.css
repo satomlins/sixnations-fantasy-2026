@@ -1,0 +1,488 @@
+/* ============================================================
+   stomlins design system - core stylesheet, v0.2.0
+   Source: github.com/satomlins/stomlins-design
+   Vendored by copy. Do not edit in a consuming project:
+   change it here, then re-copy. Per-site overrides go in the
+   project's own stylesheet, loaded after this one.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Design tokens
+   Dark is the only theme. The light set at the bottom of this
+   block exists for stomlins.com alone.
+   ------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+
+  --bg:            #0e0e0e;
+  --surface:       #161616;
+  --surface-2:     #1c1c1c;
+  --hover:         #202020;
+
+  --border:        #262626;
+  --border-strong: #333333;
+
+  --text:          #e8e8e8;
+  --text-muted:    #8a8a8a;
+
+  --focus:         #6bc1d7;
+  --selection-bg:  rgba(255,255,255,0.12);
+
+  --up:            #7fbf8e;
+  --down:          #d98080;
+
+  /* Per-site knobs. The core is greyscale: a site that wants a
+     colour sets --accent, and nothing else changes. */
+  --accent:        var(--text);
+  --label-case:    uppercase;
+  --label-tracking: 0.08em;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu, Cantarell,
+    Roboto, Helvetica, Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-lg:   15px;
+  --text-xl:   22px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  --page-width: 960px;
+  --radius: 0;
+  --ease: 120ms;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:            #f4f4f4;
+  --surface:       #ffffff;
+  --surface-2:     #ebebeb;
+  --hover:         #e4e4e4;
+
+  --border:        #dcdcdc;
+  --border-strong: #c4c4c4;
+
+  --text:          #161616;
+  --text-muted:    #6b6b6b;
+
+  --focus:         #1f7a91;
+  --selection-bg:  rgba(0,0,0,0.12);
+}
+
+/* ------------------------------------------------------------
+   Reset / base
+   ------------------------------------------------------------ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   Links
+   ------------------------------------------------------------ */
+a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--ease);
+}
+
+a:visited {
+  color: var(--text-muted);
+}
+
+a:hover, a:active, a:visited:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------------
+   Page structure - header, content, footer
+   ------------------------------------------------------------ */
+.page {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-6) var(--space-9);
+}
+
+.section-gap {
+  margin-top: var(--space-8);
+}
+
+/* ------------------------------------------------------------
+   Header
+   ------------------------------------------------------------ */
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-8);
+}
+
+.wordmark {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.wordmark-sep {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: var(--space-2);
+}
+
+.wordmark-tagline {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: var(--label-tracking);
+  text-transform: var(--label-case);
+  color: var(--text-muted);
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   Footer - identical on every site. Markup in GUIDE.md.
+   ------------------------------------------------------------ */
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-8);
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.footer-copyright {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.footer-icons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.footer-icon {
+  color: var(--text-muted);
+  transition: color var(--ease);
+  line-height: 0;
+}
+
+.footer-icon:hover {
+  color: var(--text);
+}
+
+.footer-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* Quiet text button, for site-specific toggles in the footer */
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--ease);
+}
+
+.text-btn:hover {
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------
+   Labels
+   ------------------------------------------------------------ */
+.label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: var(--label-tracking);
+  text-transform: var(--label-case);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-3);
+}
+
+.label--sm {
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-2);
+}
+
+.note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-3);
+}
+
+/* ------------------------------------------------------------
+   Tab navigation
+   ------------------------------------------------------------ */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-7);
+}
+
+.tab-link,
+.tab-link:visited {
+  display: inline-block;
+  padding: 12px 20px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: var(--label-case);
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--ease);
+  text-decoration: none;
+}
+
+.tab-link:hover,
+.tab-link:visited:hover {
+  color: var(--text);
+}
+
+.tab-link.active,
+.tab-link.active:visited {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   Tables - rules only, no fills, no zebra
+   ------------------------------------------------------------ */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: var(--label-case);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.num,
+.table .num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* ------------------------------------------------------------
+   Rows - a ruled list, for anything that is not tabular
+   ------------------------------------------------------------ */
+.rows > * {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rows > *:last-child {
+  border-bottom: none;
+}
+
+/* ------------------------------------------------------------
+   Form controls
+   ------------------------------------------------------------ */
+.btn,
+.input {
+  font: inherit;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+}
+
+.btn {
+  cursor: pointer;
+  transition: border-color var(--ease);
+}
+
+.btn:hover,
+.input:hover {
+  border-color: var(--text-muted);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   Status - colour is reserved for data, and this is data
+   ------------------------------------------------------------ */
+.status {
+  font-size: var(--text-xs);
+  font-family: var(--mono);
+  color: var(--text-muted);
+}
+
+.status--up   { color: var(--up); }
+.status--down { color: var(--down); }
+
+/* ------------------------------------------------------------
+   Motion
+   ------------------------------------------------------------ */
+main {
+  animation: fadeIn 400ms ease-out both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main { animation: none; }
+  * { transition: none !important; }
+}
+
+/* ------------------------------------------------------------
+   Responsive - 768px
+   ------------------------------------------------------------ */
+@media screen and (max-width: 768px) {
+  .page {
+    padding: var(--space-5) var(--space-4) var(--space-8);
+  }
+
+  .site-header {
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .header-wordmark {
+    text-align: center;
+  }
+
+  .header-meta {
+    align-self: flex-end;
+  }
+
+  .tab-link {
+    padding: 10px 12px;
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+}
+
+/* ------------------------------------------------------------
+   Responsive - 480px
+   ------------------------------------------------------------ */
+@media screen and (max-width: 480px) {
+  .tab-nav {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-wordmark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .wordmark-sep {
+    display: none;
+  }
+
+  .site-footer,
+  .footer-left {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .footer-copyright {
+    text-align: center;
+  }
+}

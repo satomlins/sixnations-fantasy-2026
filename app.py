@@ -3,13 +3,14 @@ import os
 from datetime import datetime, timezone
 from typing import List, Optional
 
-import dash_bootstrap_components as dbc
 import duckdb
 import pandas as pd
 import plotly.express as px
 from dash import Dash, Input, Output, dcc, html
 from dotenv import load_dotenv
 from flask import request, send_from_directory
+
+import stomlins_plotly
 from fantasy_ingest import (
     CONSISTENT_POINTS_EXCLUDED_STATS,
     get_default_db_path,
@@ -18,6 +19,9 @@ from fantasy_ingest import (
 )
 
 load_dotenv()
+
+# The shared design system's chart template becomes the default for every figure
+stomlins_plotly.register()
 
 CONSISTENT_POINTS_EXCLUDED_POINT_COLS = {
     f"{stat}_points" for stat in CONSISTENT_POINTS_EXCLUDED_STATS
@@ -524,10 +528,8 @@ round_preview = _build_filter_preview(
     [f"Round {r}" for r in rounds], prefix="All rounds"
 )
 
-external_stylesheets = [dbc.themes.DARKLY]
 app = Dash(
     __name__,
-    external_stylesheets=external_stylesheets,
     meta_tags=[
         {
             "name": "viewport",
@@ -549,29 +551,29 @@ def favicon():
 
 
 def control_card():
-    return dbc.Card(
-        dbc.CardBody(
+    return html.Section(
+        html.Div(
             [
-                html.H5("Filters", className="card-title"),
-                dbc.Row(
+                html.H3("Filters", className="label"),
+                html.Div(
                     [
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Team"),
+                                html.Label("Team", className="label label--sm"),
                                 dcc.Dropdown(
                                     id="team-filter",
                                     options=[{"label": t, "value": t} for t in teams],
                                     value=[],
                                     multi=True,
                                     placeholder=team_preview,
-                                    className="neo-dropdown",
+                                    className="site-dropdown",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Opponent"),
+                                html.Label("Opponent", className="label label--sm"),
                                 dcc.Dropdown(
                                     id="opponent-filter",
                                     options=[
@@ -581,14 +583,14 @@ def control_card():
                                     multi=True,
                                     placeholder=opponent_preview,
                                     disabled=(len(opponents) == 0),
-                                    className="neo-dropdown",
+                                    className="site-dropdown",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Position"),
+                                html.Label("Position", className="label label--sm"),
                                 dcc.Dropdown(
                                     id="position-filter",
                                     options=[
@@ -597,14 +599,14 @@ def control_card():
                                     value=[],
                                     multi=True,
                                     placeholder=position_preview,
-                                    className="neo-dropdown",
+                                    className="site-dropdown",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Round"),
+                                html.Label("Round", className="label label--sm"),
                                 dcc.Dropdown(
                                     id="round-filter",
                                     options=[
@@ -615,20 +617,19 @@ def control_card():
                                     multi=True,
                                     placeholder=round_preview,
                                     disabled=(len(rounds) == 0),
-                                    className="neo-dropdown",
+                                    className="site-dropdown",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
                     ],
-                    className="gy-2",
+                    className="filter-grid",
                 ),
-                html.Hr(),
-                dbc.Row(
+                html.Div(
                     [
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Stack Metric"),
+                                html.Label("Stack Metric", className="label label--sm"),
                                 dcc.RadioItems(
                                     id="metric-mode",
                                     options=[
@@ -637,14 +638,14 @@ def control_card():
                                     ],
                                     value="points",
                                     inline=True,
-                                    className="neo-radio",
+                                    className="radio-group",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Aggregation"),
+                                html.Label("Aggregation", className="label label--sm"),
                                 dcc.RadioItems(
                                     id="aggregate-mode",
                                     options=[
@@ -653,14 +654,14 @@ def control_card():
                                     ],
                                     value="total",
                                     inline=True,
-                                    className="neo-radio",
+                                    className="radio-group",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Points Category"),
+                                html.Label("Points Category", className="label label--sm"),
                                 dcc.RadioItems(
                                     id="points-basis",
                                     options=[
@@ -672,14 +673,14 @@ def control_card():
                                     ],
                                     value="total",
                                     inline=True,
-                                    className="neo-radio",
+                                    className="radio-group",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                        dbc.Col(
+                        html.Div(
                             [
-                                dbc.Label("Player Type"),
+                                html.Label("Player Type", className="label label--sm"),
                                 dcc.RadioItems(
                                     id="player-type-mode",
                                     options=[
@@ -689,134 +690,136 @@ def control_card():
                                     ],
                                     value="starters",
                                     inline=True,
-                                    className="neo-radio",
+                                    className="radio-group",
                                 ),
                             ],
-                            md=3,
+                            className="field",
                         ),
-                    ]
+                    ],
+                    className="filter-grid",
                 ),
             ]
         ),
-        className="panel filters-panel",
+        className="filters",
     )
 
 
 ## Removed summary card per feedback
 
 
-app.layout = dbc.Container(
+app.layout = html.Div(
     [
-        html.Div(
-            [
-                html.Div("Six Nations Fantasy", className="hero-title"),
-                html.Div("Scoring Explorer", className="hero-subtitle"),
-            ],
-            className="hero",
-        ),
-        dbc.Row(
-            [
-                dbc.Col(control_card(), md=12),
-            ],
-            className="g-tight filters-section",
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.H5("Breakdown", className="card-title"),
-                                dcc.Graph(id="stacked-bar", className="neo-graph"),
-                                dbc.Row(
-                                    [
-                                        dbc.Col(
-                                            [
-                                                dbc.Label(
-                                                    "X Axis",
-                                                    id="axis-group-label",
-                                                    className="mt-2",
-                                                ),
-                                                dcc.Dropdown(
-                                                    id="axis-group",
-                                                    options=[
-                                                        {
-                                                            "label": "Player",
-                                                            "value": "name",
-                                                        },
-                                                        {
-                                                            "label": "Player vs Opponent",
-                                                            "value": "name_opponent",
-                                                        },
-                                                        {
-                                                            "label": "Position vs Opponent",
-                                                            "value": "position_opponent",
-                                                        },
-                                                        {
-                                                            "label": "Position",
-                                                            "value": "position",
-                                                        },
-                                                        {"label": "Team", "value": "team"},
-                                                        {
-                                                            "label": "Opponent",
-                                                            "value": "opponent",
-                                                        },
-                                                    ],
-                                                    value="name",
-                                                    clearable=False,
-                                                    className="neo-dropdown",
-                                                ),
-                                            ],
-                                            md=3,
-                                        ),
-                                        dbc.Col(
-                                            html.Div(
-                                                f"Data last updated: {LAST_PULLED_LABEL}",
-                                                className="last-updated last-updated--right",
-                                            ),
-                                            className="d-flex align-items-end",
-                                        ),
-                                    ],
-                                    align="end",
-                                ),
-                            ]
-                        ),
-                        className="panel",
-                    ),
-                    md=12,
-                ),
-            ],
-            className="g-tight",
-        ),
-        html.Footer(
+        html.Header(
             [
                 html.Div(
                     [
-                        html.Div(
-                            f"\u00a9 {FOOTER_YEAR} Scott Tomlins | website by Scott Tomlins",
-                            className="footer-copy",
-                        ),
-                        html.Div(
-                            [
-                                html.A("Email", href="mailto:fantasy6n@stomlins.com", className="footer-link"),
-                                html.Span("·", className="footer-sep"),
-                                html.A("LinkedIn", href="https://linkedin.stomlins.com", target="_blank", rel="noopener noreferrer", className="footer-link"),
-                                html.Span("·", className="footer-sep"),
-                                html.A("GitHub", href="https://github.com/satomlins/", target="_blank", rel="noopener noreferrer", className="footer-link"),
-                                html.Span("·", className="footer-sep"),
-                                html.A("Medium", href="https://stomlins.medium.com/", target="_blank", rel="noopener noreferrer", className="footer-link"),
-                            ],
-                            className="footer-actions",
-                        ),
+                        html.Span("six nations fantasy", className="wordmark"),
+                        html.Span(" \u00b7 ", className="wordmark-sep"),
+                        html.Span("scoring explorer", className="wordmark-tagline"),
                     ],
-                    className="footer-center-stack",
+                    className="header-wordmark",
+                ),
+                html.Div(
+                    html.Span(f"Data last updated: {LAST_PULLED_LABEL}"),
+                    className="header-meta",
                 ),
             ],
-            className="app-footer",
+            className="site-header",
+        ),
+        html.Main(
+            [
+                control_card(),
+                html.Section(
+                    [
+                        html.H3("Breakdown", className="label"),
+                        dcc.Graph(id="stacked-bar", className="chart"),
+                        html.Div(
+                            [
+                                html.Label(
+                                    "X Axis",
+                                    id="axis-group-label",
+                                    className="label label--sm",
+                                ),
+                                dcc.Dropdown(
+                                id="axis-group",
+                                options=[
+                                    {
+                                        "label": "Player",
+                                        "value": "name",
+                                    },
+                                    {
+                                        "label": "Player vs Opponent",
+                                        "value": "name_opponent",
+                                    },
+                                    {
+                                        "label": "Position vs Opponent",
+                                        "value": "position_opponent",
+                                    },
+                                    {
+                                        "label": "Position",
+                                        "value": "position",
+                                    },
+                                    {"label": "Team", "value": "team"},
+                                    {
+                                        "label": "Opponent",
+                                        "value": "opponent",
+                                    },
+                                ],
+                                value="name",
+                                clearable=False,
+    className="site-dropdown",
+                                ),
+                            ],
+                            className="field axis-field",
+                        ),
+                    ],
+                    className="section-gap",
+                ),
+            ]
+        ),
+        # Footer: the standard one from stomlins-design (GUIDE.md). The icons are
+        # CSS masks over assets/icons/*.svg, so they take the link colour.
+        html.Footer(
+            [
+                html.Div(
+                    html.Span(
+                        f"\u00a9 {FOOTER_YEAR} six nations fantasy \u00b7 website by Scott Tomlins",
+                        className="footer-copyright",
+                    ),
+                    className="footer-left",
+                ),
+                html.Div(
+                    [
+                        html.A(
+                            html.Span(className="icon icon--envelope"),
+                            href="mailto:scott@stomlins.com",
+                            className="footer-icon",
+                            **{"aria-label": "Email"},
+                        ),
+                        html.A(
+                            html.Span(className="icon icon--linkedin"),
+                            href="https://www.linkedin.com/in/scotttomlins/",
+                            target="_blank",
+                            rel="noopener noreferrer me",
+                            className="footer-icon",
+                            **{"aria-label": "LinkedIn"},
+                        ),
+                        html.A(
+                            html.Span(className="icon icon--github"),
+                            href="https://github.com/satomlins/",
+                            target="_blank",
+                            rel="noopener noreferrer me",
+                            className="footer-icon",
+                            **{"aria-label": "GitHub"},
+                        ),
+                    ],
+                    className="footer-icons",
+                ),
+            ],
+            className="site-footer",
         ),
     ],
-    fluid=True,
-    className="neo-container",
+    className="page",
 )
 
 
@@ -910,9 +913,7 @@ def refresh(
             font={"size": 16},
         )
         empty_fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            template="stomlins",
         )
         empty_fig.update_xaxes(visible=False)
         empty_fig.update_yaxes(visible=False)
@@ -1165,8 +1166,6 @@ def refresh(
                     side="top",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1d242c",
-                    tickfont=dict(size=12),
                 )
             )
         else:
@@ -1199,8 +1198,6 @@ def refresh(
                     side="right",
                     range=[0, 80],
                     showgrid=False,
-                    zerolinecolor="#1d242c",
-                    tickfont=dict(size=12),
                 )
             )
 
@@ -1211,17 +1208,8 @@ def refresh(
     fig_bar.update_layout(
         legend_title_text="",
         margin=margin_cfg,
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={
-            "family": "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-            "size": 15,
-            "color": "#8f9ba8",
-        },
+        template="stomlins",
         legend={
-            "font": {"size": 11, "color": "#8f9ba8"},
-            "bgcolor": "rgba(0,0,0,0)",
             "orientation": "h",
             "yanchor": "top",
             "y": legend_y,
@@ -1236,33 +1224,21 @@ def refresh(
 
     if is_mobile:
         fig_bar.update_xaxes(
-            tickfont={"size": 12},
-            gridcolor="#1d242c",
-            zerolinecolor="#1d242c",
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
             title_text=None,
-            tickfont={"size": 12},
-            gridcolor="#1d242c",
-            zerolinecolor="#1d242c",
             automargin=True,
         )
     else:
         fig_bar.update_xaxes(
             title_text=None,
-            tickfont={"size": 12},
-            gridcolor="#1d242c",
-            zerolinecolor="#1d242c",
             tickangle=-30,
             automargin=True,
             title_standoff=4,
         )
         fig_bar.update_yaxes(
-            tickfont={"size": 12},
-            gridcolor="#1d242c",
-            zerolinecolor="#1d242c",
         )
 
     return fig_bar, axis_selector_label
