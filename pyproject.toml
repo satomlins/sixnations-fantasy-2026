@@ -24,7 +24,7 @@ fantasy6n-dashboard = "app:main"
 fantasy6n-ingest = "fantasy_ingest:main"
 
 [tool.setuptools]
-py-modules = ["app", "fantasy_ingest"]
+py-modules = ["app", "fantasy_ingest", "stomlins_plotly"]
 
 [tool.uv]
 package = true

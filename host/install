@@ -29,7 +29,7 @@ as_opc() { setpriv --reuid opc --regid opc --init-groups env HOME=/home/opc "$@"
 # New files under assets/ are only picked up at start, so they count.
 code_hash() {
   { find "$REPO/assets" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum
-    sha256sum "$REPO/app.py" "$REPO/fantasy_ingest.py" "$REPO/pyproject.toml" "$REPO/uv.lock" "$UNIT_SRC"
+    sha256sum "$REPO/app.py" "$REPO/fantasy_ingest.py" "$REPO/stomlins_plotly.py" "$REPO/pyproject.toml" "$REPO/uv.lock" "$UNIT_SRC"
   } | sha256sum | cut -d' ' -f1
 }
 
@@ -37,7 +37,8 @@ code_hash() {
 # from a synced venv the two modules parse and their dependencies import (the running
 # process is unaffected by the sync). The modules are parsed, not imported: see above.
 cd "$REPO"
-for f in deploy/$UNIT app.py fantasy_ingest.py pyproject.toml uv.lock; do
+for f in deploy/$UNIT app.py fantasy_ingest.py stomlins_plotly.py assets/00-stomlins.css \
+         pyproject.toml uv.lock; do
   [ -f "$REPO/$f" ] || { echo "$f is missing, nothing installed" >&2; exit 1; }
 done
 # Not in git (first-time setup): without them the dashboard cannot start
@@ -49,7 +50,7 @@ import ast, sys
 for path in sys.argv[1:]:
     ast.parse(open(path, encoding="utf-8").read(), path)
 import dash, dash_bootstrap_components, dotenv, duckdb, gunicorn, pandas, plotly, requests
-' app.py fantasy_ingest.py ||
+' app.py fantasy_ingest.py stomlins_plotly.py ||
   { echo "uv sync, parse or dependency import failed, nothing installed" >&2; exit 1; }
 
 if ! cmp -s "$UNIT_SRC" "$UNIT_DEST"; then
