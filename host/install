@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Install this checkout's systemd unit onto the host and restart the dashboard when the
+# running code changed. Run as root from the clone at /home/opc/fantasy6n by
+# gitops-pull whenever origin/main moves (the contract is in
+# ../stomlins-oracle/GITOPS.md). Idempotent.
+#
+# DATA SAFETY: /var/lib/fantasy6n/all_matches.duckdb cannot be regenerated (the season
+# is over). This script only checks that the file exists. It never opens, copies, moves
+# or writes it, never runs the ingest, never imports app.py (importing it can refresh
+# from the API and write the database) and keeps its own state outside /var/lib/fantasy6n.
+# Do not add anything here that reads or writes that directory.
+set -euo pipefail
+
+[ "$(id -u)" = 0 ] || { echo "run as root" >&2; exit 1; }
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+UNIT=fantasy6n.service
+UNIT_SRC="$REPO/deploy/$UNIT"
+UNIT_DEST="/etc/systemd/system/$UNIT"
+ENV_FILE=/etc/sysconfig/fantasy6n
+DB=/var/lib/fantasy6n/all_matches.duckdb
+STATE_DIR=/var/lib/fantasy6n-install
+STAMP="$STATE_DIR/running.sha256"
+URL=http://127.0.0.1:8051/
+
+# uv and the venv belong to opc, same as the unit's User=
+as_opc() { setpriv --reuid opc --regid opc --init-groups env HOME=/home/opc "$@"; }
+
+# Hash of everything the running process has loaded: a change here needs a restart.
+# New files under assets/ are only picked up at start, so they count.
+code_hash() {
+  { find "$REPO/assets" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum
+    sha256sum "$REPO/app.py" "$REPO/fantasy_ingest.py" "$REPO/pyproject.toml" "$REPO/uv.lock" "$UNIT_SRC"
+  } | sha256sum | cut -d' ' -f1
+}
+
+# Validate before touching anything: the files are there, the unit is well formed, and
+# from a synced venv the two modules parse and their dependencies import (the running
+# process is unaffected by the sync). The modules are parsed, not imported: see above.
+cd "$REPO"
+for f in deploy/$UNIT app.py fantasy_ingest.py pyproject.toml uv.lock; do
+  [ -f "$REPO/$f" ] || { echo "$f is missing, nothing installed" >&2; exit 1; }
+done
+# Not in git (first-time setup): without them the dashboard cannot start
+[ -f "$ENV_FILE" ] || { echo "$ENV_FILE is missing, nothing installed" >&2; exit 1; }
+[ -f "$DB" ] || { echo "$DB is missing, nothing installed" >&2; exit 1; }
+systemd-analyze verify "$UNIT_SRC" || { echo "deploy/$UNIT is invalid, nothing installed" >&2; exit 1; }
+as_opc /usr/local/bin/uv run --frozen python -c '
+import ast, sys
+for path in sys.argv[1:]:
+    ast.parse(open(path, encoding="utf-8").read(), path)
+import dash, dash_bootstrap_components, dotenv, duckdb, gunicorn, pandas, plotly, requests
+' app.py fantasy_ingest.py ||
+  { echo "uv sync, parse or dependency import failed, nothing installed" >&2; exit 1; }
+
+if ! cmp -s "$UNIT_SRC" "$UNIT_DEST"; then
+  install -m 0644 -o root -g root "$UNIT_SRC" "$UNIT_DEST"
+  restorecon "$UNIT_DEST"
+  systemctl daemon-reload
+  echo "updated $UNIT_DEST"
+fi
+systemctl is-enabled -q "$UNIT" || { systemctl enable -q "$UNIT"; echo "enabled $UNIT"; }
+
+# Restarts are kept to the minimum because a start may refresh from the API and write
+# the database (SIXNATIONS_REFRESH_ON_START in the env file). So a missing stamp with
+# the service already up is adopted as "running this code" and not answered with a
+# restart: that is the state at first enrolment, when the process was started from
+# this same commit.
+want="$(code_hash)"
+if ! systemctl is-active -q "$UNIT"; then
+  systemctl restart "$UNIT"
+  echo "restarted $UNIT (it was not running)"
+elif [ ! -f "$STAMP" ]; then
+  echo "no stamp yet, adopting the running $UNIT without a restart"
+elif [ "$want" != "$(cat "$STAMP")" ]; then
+  systemctl restart "$UNIT"
+  echo "restarted $UNIT"
+fi
+
+# Every run ends by proving the dashboard serves
+ok=0
+for _ in $(seq 1 60); do
+  if curl -fs -o /dev/null --max-time 2 "$URL"; then ok=1; break; fi
+  sleep 0.5
+done
+if [ "$ok" = 0 ]; then
+  journalctl -u "$UNIT" -n 10 --no-pager >&2 || true
+  echo "$URL did not answer 200 after install" >&2; exit 1
+fi
+
+# Only once it serves, so a failed restart is retried on the next run
+mkdir -p "$STATE_DIR"
+echo "$want" > "$STATE_DIR/.running.tmp" && mv "$STATE_DIR/.running.tmp" "$STAMP"
+# No git here: root in an opc-owned checkout trips git's "dubious ownership" check
+echo "installed from $REPO"
