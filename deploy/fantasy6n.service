@@ -1,0 +1,24 @@
+[Unit]
+Description=Six Nations Fantasy Dashboard
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+WorkingDirectory=/home/opc/fantasy6n
+EnvironmentFile=/etc/sysconfig/fantasy6n
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/bin/uv run gunicorn app:app --bind 127.0.0.1:8051 --workers 1 --threads 2 --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile -
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+ReadWritePaths=/var/lib/fantasy6n /home/opc/fantasy6n /home/opc/.cache/uv
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
