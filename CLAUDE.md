@@ -2,13 +2,15 @@
 
 Six Nations Fantasy dashboard (Dash) plus the ingest script that built its data. Live at https://fantasy6n.stomlins.com. The 2026 tournament is over: the site is an archive. What the code does is in `README.md`. Hosting conventions: `USING_ORACLE.md` in `../stomlins-oracle`.
 
+Project knowledge (purpose, status, decisions, deployment plan, host, DNS and credentials' whereabouts, to-dos) lives in the brain: `notes/projects/sixnations-fantasy-2026.md` in `satomlins/the-brain` (`~/projects/the-brain` on the Mac, `~/the-brain` on the brain VM). This file holds code facts only.
+
 > **DEPLOY = merge to `main`.** That is the whole process. The host polls GitHub every 3 minutes, checks out the new `main` and runs `host/install`; the result lands on ntfy topic `stomlins-oracle`.
 >
 > Production runs whatever `main` is. Never deploy from another branch. Because merging deploys, only merge when the user says so.
 
 ## The data cannot be regenerated
 
-`/var/lib/fantasy6n/all_matches.duckdb` on the host is the only live copy of the season's data and it cannot be regenerated. There is a backup on the Mac at `~/projects/pi-stuff/all_matches.duckdb`.
+`/var/lib/fantasy6n/all_matches.duckdb` on the host is the only live copy of the season's data and it cannot be regenerated. Backups: `~/projects/stomlins-oracle/backups/all_matches.duckdb` (in the private stomlins-oracle repo) and `all_matches.duckdb.bak-2026-10-10` on the host.
 
 - Never delete, move, overwrite or "refresh" that file. Do not run `fantasy6n-ingest` on the host.
 - `host/install` never opens it and must stay that way. It only checks the file exists.
@@ -33,16 +35,10 @@ uv run fantasy6n-dashboard   # local, needs a DuckDB file in ./data (or SIXNATIO
 
 ## Deployment
 
-- Host: Oracle (`ssh stomlins-oracle`), app dir `/home/opc/fantasy6n`, cloned from `github.com/satomlins/sixnations-fantasy-2026`.
-- Unit: `fantasy6n.service` (installed from `deploy/fantasy6n.service` to `/etc/systemd/system/` by `host/install`), gunicorn on `127.0.0.1:8051`.
-- Env file: `/etc/sysconfig/fantasy6n` (secrets and settings, including `SIXNATIONS_DATA_DIR`). Set up by hand, not in git.
-- Data: `/var/lib/fantasy6n/` (see above).
-- Public: cloudflared ingress `fantasy6n.stomlins.com` -> `http://localhost:8051`.
-- Production tracks `main` (the Oracle checkout is a detached `HEAD` on the `origin/main` commit).
+The deployment plan, host and public path are in the brain note (Deploy). In short: merging to `main` deploys, by the host-wide GitOps rule (`GITOPS.md` in `stomlins-oracle`); production runs whatever `main` is.
 
-### How a change reaches production
-
-Automatic, by the host-wide rule "main is what's deployed" (design: `GITOPS.md` in `stomlins-oracle`). On the rule since 2026-10-10 (`fantasy6n /home/opc/fantasy6n` in `host/gitops-repos` in `stomlins-oracle`). `gitops-pull.timer` sees `main` move, checks out that commit and runs `host/install` as root. No SSH and no CI.
+- Unit: `deploy/fantasy6n.service`, installed by `host/install`, gunicorn on `127.0.0.1:8051`. App dir on the host `/home/opc/fantasy6n`.
+- Env file `/etc/sysconfig/fantasy6n` (secrets and settings, including `SIXNATIONS_DATA_DIR`), made by hand, not in git. Data: `/var/lib/fantasy6n/` (see above).
 
 `host/install` is everything project-specific. Each run it:
 
